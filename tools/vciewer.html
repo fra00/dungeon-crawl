@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Dungeon 2004 - Map & Visibility Viewer</title>
+    <style>
+      body {
+        background: #222;
+        color: #eee;
+        font-family: sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      #controls {
+        margin: 20px;
+        padding: 15px;
+        background: #333;
+        border-radius: 8px;
+      }
+      #map-container {
+        display: grid;
+        grid-template-columns: repeat(26, 30px);
+        grid-template-rows: repeat(19, 30px);
+        gap: 1px;
+        background: #555;
+        border: 2px solid #000;
+      }
+      .cell {
+        width: 30px;
+        height: 30px;
+        background: #999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 9px;
+        position: relative;
+        cursor: pointer;
+        box-sizing: border-box;
+        border: 1px solid #666;
+      }
+      .cell:hover {
+        border: 1px solid yellow;
+      }
+      .wall {
+        background: #333 !important;
+      }
+      .hero {
+        border-radius: 50%;
+        width: 80%;
+        height: 80%;
+        background: blue;
+        color: white;
+      }
+      .monster {
+        border-radius: 4px;
+        width: 80%;
+        height: 80%;
+        background: red;
+        color: white;
+      }
+      .furniture {
+        background: saddlebrown;
+        color: white;
+        font-weight: bold;
+      }
+      .door-h {
+        background: orange;
+        width: 100%;
+        height: 6px;
+        position: absolute;
+        top: 0;
+        z-index: 10;
+        border: 1px solid black;
+      }
+      .door-v {
+        background: orange;
+        width: 6px;
+        height: 100%;
+        position: absolute;
+        left: 0;
+        z-index: 10;
+        border: 1px solid black;
+      }
+      .trap {
+        color: #ffeb3b;
+        font-weight: bold;
+        text-shadow: 1px 1px 2px black;
+      }
+      .secret {
+        border: 2px dashed cyan !important;
+        color: cyan;
+        font-weight: bold;
+      }
+      #info {
+        margin-top: 20px;
+        width: 400px;
+        background: #333;
+        padding: 15px;
+        border-left: 5px solid #0078d7;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>HQ 2004 Map & Visibility Viewer</h1>
+
+    <div id="controls">
+      <label>Missione (.json): </label>
+      <input type="file" id="fileInputMap" accept=".json" />
+      <label>Visibilità (.json): </label>
+      <input type="file" id="fileInputBoard" accept=".json" />
+    </div>
+    <div id="map-container"></div>
+
+    <div style="display: flex; gap: 20px; align-items: flex-start">
+      <div id="info">
+        <h3>Dettagli Casella</h3>
+        <div id="details">Seleziona una casella sulla mappa...</div>
+      </div>
+      <div
+        id="json-info"
+        style="
+          margin-top: 20px;
+          width: 450px;
+          background: #333;
+          padding: 15px;
+          border-left: 5px solid #00d778;
+        "
+      >
+        <h3>JSON Completo</h3>
+        <pre
+          id="json-details"
+          style="
+            font-size: 11px;
+            color: #0f0;
+            overflow: auto;
+            max-height: 500px;
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-all;
+          "
+        >
+{}</pre
+        >
+      </div>
+    </div>
+
+    <script>
+      const container = document.getElementById("map-container");
+      const details = document.getElementById("details");
+
+      let mapData = null;
+      let boardData = null;
+
+      // Generatore di colori deterministico per ID
+      function getColor(id) {
+        if (
+          id === null ||
+          id === undefined ||
+          id === "0" ||
+          id === 0 ||
+          id === ""
+        )
+          return "transparent";
+        const colors = [
+          "#e6194b",
+          "#3cb44b",
+          "#ffe119",
+          "#4363d8",
+          "#f58231",
+          "#911eb4",
+          "#42d4f4",
+          "#f032e6",
+          "#bfef45",
+          "#fabed4",
+          "#469990",
+          "#dcbeff",
+          "#9a6324",
+          "#fffac8",
+          "#800000",
+          "#aaffc3",
+          "#808000",
+          "#ffd8b1",
+          "#000075",
+          "#a9a9a9",
+        ];
+        const index =
+          typeof id === "string"
+            ? id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0)
+            : id;
+        return colors[index % colors.length];
+      }
+
+      function handleFile(input, type) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const data = JSON.parse(e.target.result);
+          if (type === "map") mapData = data;
+          else boardData = data;
+          render();
+        };
+        reader.readAsText(file);
+      }
+
+      document.getElementById("fileInputMap").onchange = (e) =>
+        handleFile(e.target, "map");
+      document.getElementById("fileInputBoard").onchange = (e) =>
+        handleFile(e.target, "board");
+
+      function render() {
+        container.innerHTML = "";
+
+        // Determina dimensioni griglia basandosi sui file caricati (default 26x19)
+        let cols = 26;
+        let rows = 19;
+
+        if (mapData && mapData.grid) {
+          cols = Math.max(cols, ...mapData.grid.map((c) => c.x)) + 1;
+          rows = Math.max(rows, ...mapData.grid.map((c) => c.y)) + 1;
+        }
+
+        container.style.gridTemplateColumns = `repeat(${cols}, 30px)`;
+
+        // Mappe per lookup veloce tramite coordinate
+        const boardMap = {};
+        if (boardData && boardData.data) {
+          boardData.data.forEach((c) => (boardMap[`${c.x},${c.y}`] = c));
+        }
+
+        const gridMap = {};
+        if (mapData && mapData.grid) {
+          mapData.grid.forEach((c) => (gridMap[`${c.x},${c.y}`] = c));
+        }
+
+        for (let y = 0; y < rows; y++) {
+          for (let x = 0; x < cols; x++) {
+            const div = document.createElement("div");
+            div.className = "cell";
+            const coord = `${x},${y}`;
+            const bCell = boardMap[coord];
+            const mCell = gridMap[coord];
+
+            // Render Tabellone (Colori e Visibilità)
+            if (bCell) {
+              const colorValo = getColor(bCell.valo);
+              const colorVis1 = getColor(bCell.vis1);
+              const colorVis2 = getColor(bCell.vis2);
+              div.style.border = `3px solid ${colorValo}`;
+              if (bCell.vis1 !== "0" || bCell.vis2 !== "0") {
+                div.style.background = `linear-gradient(135deg, ${colorVis1} 50%, ${colorVis2} 50%)`;
+              }
+              div.innerText = bCell.valo;
+              if (bCell.valo === "1") div.style.color = "white";
+            }
+
+            // Render Missione (Mostri, Mobili, Muri)
+            if (mCell) {
+              if (mCell.arnt.antroc) div.classList.add("wall");
+              if (mCell.mobili.num !== null) {
+                div.classList.add("furniture");
+                div.innerText = "MOB";
+              }
+              if (mCell.mostab.mos) {
+                const m = document.createElement("div");
+                m.className = "monster";
+                m.innerText = mCell.mostab.mosid;
+                div.appendChild(m);
+              }
+              if (mCell.trpl && mCell.trpl.tipo > 0) {
+                const t = document.createElement("div");
+                t.className = "trap";
+                t.innerText = "T" + mCell.trpl.tipo;
+                div.appendChild(t);
+              }
+              if (mCell.psgg && mCell.psgg.ps !== null) {
+                div.classList.add("secret");
+                div.innerText = "SEC";
+              }
+              if (mCell.fine && mCell.fine !== "0") {
+                div.style.boxShadow = "inset 0 0 10px #4caf50";
+                div.style.backgroundColor = "#1b5e20";
+              }
+            }
+
+            div.onclick = () => showDetails(x, y, bCell, mCell);
+            container.appendChild(div);
+          }
+        }
+
+        // Porte (sempre sopra la griglia)
+        if (mapData && mapData.porte) {
+          mapData.porte.forEach((door) => {
+            const index = parseInt(door.y) * cols + parseInt(door.x);
+            const cellDiv = container.children[index];
+            if (cellDiv) {
+              const d = document.createElement("div");
+              d.className = door.oriz ? "door-h" : "door-v";
+              cellDiv.appendChild(d);
+            }
+          });
+        }
+
+        // Eroi
+        if (mapData && mapData.eroi_start) {
+          mapData.eroi_start.forEach((eroe) => {
+            const index = parseInt(eroe.y) * cols + parseInt(eroe.x);
+            const cellDiv = container.children[index];
+            if (cellDiv) {
+              const h = document.createElement("div");
+              h.className = "hero";
+              h.innerText = "H" + eroe.id;
+              cellDiv.appendChild(h);
+            }
+          });
+        }
+      }
+
+      function showDetails(x, y, bCell, mCell) {
+        let html = `<strong>Posizione:</strong> X:${x}, Y:${y}<br><hr>`;
+        if (bCell) {
+          html += `<strong>Tabellone Visibilità</strong><br>
+                       Valo (Area): ${bCell.valo}<br>
+                       Vis1: ${bCell.vis1}<br>
+                       Vis2: ${bCell.vis2}<br>
+                       Fog: ${bCell.fog ? "SI" : "NO"}<br><hr>`;
+        }
+        if (mCell) {
+          html += `<strong>Dati Missione</strong><br>
+                    <strong>Mostro:</strong> ${mCell.mostab.mos ? `ID:${mCell.mostab.mosid} (HP:${mCell.mostab.corpo})` : "Nessuno"}<br>
+                    <strong>Mobile:</strong> ${mCell.mobili.num ? `${mCell.mobili.img} (ID:${mCell.mobili.num})` : "Nessuno"}<br>
+                    <strong>Passaggio Segreto:</strong> ${mCell.psgg.ps ? `ID:${mCell.psgg.ps} (${mCell.psgg.oriz ? "Oriz" : "Vert"})` : "No"}<br>
+                    <strong>Trappola:</strong> ${mCell.trpl.tipo > 0 ? `Tipo:${mCell.trpl.tipo} (Caduta X:${mCell.trpl.rccadex} Y:${mCell.trpl.rccadey})` : "No"}<br>
+                    <strong>Tesoro:</strong> ${
+                      mCell.tes.mon > 0 ||
+                      mCell.tes.ogg > 0 ||
+                      mCell.tes.arma > 0
+                        ? `<br>- Oro: ${mCell.tes.mon}<br>- Oggetto: ${mCell.tes.ogg}<br>- Arma: ${mCell.tes.arma}<br>- Trappola: ${mCell.tes.trp}`
+                        : "Vuoto"
+                    }<br>
+                    <strong>Uscita:</strong> ${mCell.fine !== "0" ? "SI" : "No"}`;
+        }
+        if (!bCell && !mCell) html += "Cella vuota.";
+        details.innerHTML = html;
+
+        // Aggiornamento pannello JSON
+        const jsonDisplay = document.getElementById("json-details");
+        if (jsonDisplay) {
+          jsonDisplay.textContent = JSON.stringify(
+            { board: bCell, grid: mCell },
+            null,
+            2,
+          );
+        }
+      }
+
+      function renderBoard(board) {
+        boardData = board;
+        render();
+      }
+
+      function renderMap(data) {
+        mapData = data;
+        render();
+      }
+    </script>
+  </body>
+</html>

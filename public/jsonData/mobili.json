@@ -1,0 +1,90 @@
+{
+  "mobili": [
+    {
+      "id": "altare",
+      "name": "Altare",
+      "variants": [
+        { "key": "o", "label": "orizzontale", "img": "altareo.png" },
+        { "key": "v", "label": "verticale", "img": "altarev.png" }
+      ]
+    },
+    {
+      "id": "armadio",
+      "name": "Armadio",
+      "variants": [
+        { "key": "o", "label": "orizzontale", "img": "armadioo.png" },
+        { "key": "v", "label": "verticale", "img": "armadiov.png" }
+      ]
+    },
+    {
+      "id": "armeria",
+      "name": "Armeria",
+      "variants": [
+        { "key": "o", "label": "orizzontale", "img": "armeriao.png" },
+        { "key": "v", "label": "verticale", "img": "armeriav.png" }
+      ]
+    },
+    {
+      "id": "camino",
+      "name": "Camino",
+      "variants": [
+        { "key": "o", "label": "orizzontale", "img": "caminoo.png" },
+        { "key": "v", "label": "verticale", "img": "caminov.png" }
+      ]
+    },
+    {
+      "id": "libreria",
+      "name": "Libreria",
+      "variants": [
+        { "key": "o", "label": "orizzontale", "img": "libreriao.png" },
+        { "key": "v", "label": "verticale", "img": "libreriav.png" }
+      ]
+    },
+    {
+      "id": "scrivania",
+      "name": "Scrivania",
+      "variants": [
+        { "key": "o", "label": "orizzontale", "img": "scrivaniao.png" },
+        { "key": "v", "label": "verticale", "img": "scrivaniav.png" }
+      ]
+    },
+    {
+      "id": "tavolo",
+      "name": "Tavolo",
+      "variants": [
+        { "key": "o", "label": "orizzontale", "img": "tavoloo.png" },
+        { "key": "v", "label": "verticale", "img": "tavolov.png" }
+      ]
+    },
+    {
+      "id": "tomba",
+      "name": "Tomba",
+      "variants": [
+        { "key": "o", "label": "orizzontale", "img": "tombao.png" },
+        { "key": "v", "label": "verticale", "img": "tombav.png" }
+      ]
+    },
+    {
+      "id": "tortura",
+      "name": "Tortura",
+      "variants": [
+        { "key": "o", "label": "orizzontale", "img": "torturao.png" },
+        { "key": "v", "label": "verticale", "img": "torturav.png" }
+      ]
+    },
+    {
+      "id": "scala",
+      "name": "Scala",
+      "variants": [
+        { "key": "single", "label": "unico", "img": "scala.png" }
+      ]
+    },
+    {
+      "id": "trono",
+      "name": "Trono",
+      "variants": [
+        { "key": "single", "label": "unico", "img": "trono.png" }
+      ]
+    }
+  ]
+}

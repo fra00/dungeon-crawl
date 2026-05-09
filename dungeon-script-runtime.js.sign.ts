@@ -1,0 +1,5 @@
+export declare function buildScriptKey(script: any, index: number): string;
+export declare function getRoomIdFromVisibilityMap(visibilityMap: any, x: number, y: number): string | null;
+export declare function moveCurrentHeroInSession(session: any, nextX: number, nextY: number): any;
+export declare function resolveHeroAttackInSession(session: any, params: { monsterId: number; combatResult: any; statusesToRemove?: string[]; consumedWeaponId?: number | null }): any;
+export declare function executeDungeonScripts(params: { session: any; eventType: number; context?: any; visibilityMap?: any; random?: () => number }): { session: any; handled: boolean; notifications: string[]; revealPoints: { x: number; y: number }[]; effects: { attackBlocked: boolean; forceFinishTurn: boolean; movementDelta: number; stopMovement: boolean; activeHeroPosition: { x: number; y: number } | null } };

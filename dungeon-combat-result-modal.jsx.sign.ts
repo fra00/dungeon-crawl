@@ -1,0 +1,1 @@
+export default function CombatResultModal(props: { isOpen: boolean; onClose: () => void; combatResult: any; attacker: any; defender: any }): React.ReactElement | null;

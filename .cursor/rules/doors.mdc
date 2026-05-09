@@ -1,0 +1,93 @@
+# Porte e Passaggi Segreti (geometria direzionale +1)
+
+**La stessa convenzione si applica sia alle porte che ai passaggi segreti.** Differiscono solo nello storage e nel meccanismo di scoperta:
+
+| Concetto | Storage | Discovery |
+|----------|---------|-----------|
+| Porta | `currentMap.porte: [{x,y,oriz}]` | Sempre nota |
+| Passaggio segreto | `cell.psgg = {ps, oriz, flpo, flpv}` (sulla cella) | Va scoperto via "Cerca trappole/passaggi", poi entra in `foundPassages: [{x,y,oriz,img,flpo,flpv}]` |
+
+Coordinate **1-based** come tutte le entità del runtime (vedi [coordinates.mdc](mdc:.cursor/rules/coordinates.mdc)).
+
+## Convenzione direzionale
+
+**Una porta o passaggio segreto occupa una propria cella `(x, y)` con flag `oriz`.** Il flag determina **il lato +1 destinazione**, non un asse simmetrico. Una porta gestisce **una sola coppia** `(door, neighbor)`:
+
+| `oriz` | Apertura | Asse | Vicino gestito (+1) | Immagine porta | Immagine psg |
+|--------|----------|------|---------------------|----------------|--------------|
+| `true` | verticale (immagine sdraiata) | Y verso sud | `(x, y+1)` | `portao.png` | `pso.png` |
+| `false` | orizzontale (immagine in piedi) | X verso est | `(x+1, y)` | `portav.png` | `psv.png` |
+
+> **NON è simmetrica**: il vicino `-1` (es. `(x, y-1)` per `oriz=true`) NON è gestito da questa porta. Per gating dal lato opposto serve una **seconda porta** autorata sull'altra cella.
+
+### Esempio: gating singolo
+
+```
+y=10  [valo A]   ← cella della porta (oriz=true)
+y=11  [valo B]   ← gated dalla porta — destinazione +1
+```
+
+Una sola porta `{x:5, y:10, oriz:true}` permette `(5,10) ↔ (5,11)`. Il movimento `(5,10) ↔ (5,9)` NON è gestito.
+
+### Esempio: gating bidirezionale (corridoio in mezzo)
+
+Per un corridoio che attraversa una stanza con porta a entrambi i lati, servono **DUE porte autorate**:
+
+```
+y=9   [valo A]   ← (Porta1: 5,9, oriz=true) gata (5,9)↔(5,10)
+y=10  [valo C]   ← corridoio tra le due porte
+y=11  [valo B]   ← (Porta2: 5,10, oriz=true) gata (5,10)↔(5,11)
+```
+
+Una sola porta non basta: serve una porta sulla cella `(5,9)` per entrare in `(5,10)` e una porta sulla cella `(5,10)` per uscire in `(5,11)`.
+
+## Storia del refactor
+
+Una versione precedente provava una geometria simmetrica (gating su entrambi i vicini ±1). Era stata introdotta come "fix" per il bug "eroe sulla porta non si muove cliccando il vicino", ma il bug reale era una **race condition** tra `moveCurrentHeroTo` e `executeMissionScripts` (ora risolta in `dungeon-use-turn-logic.js`), non la geometria. La geometria è e resta direzionale +1.
+
+## File chiave
+
+- **[dungeon-door-rules.js](mdc:dungeon-door-rules.js)** — Modulo puro:
+  - `getDoorGatedNeighbor(door)` → l'unico vicino gestito (+1) o `null`.
+  - `getDoorPair(door)` → coppia `[door, neighbor +1]` o `null`.
+  - `getDoorGatedNeighbors(door)` / `getDoorGatedPairs(door)` → varianti plurali (sempre 0 o 1 elemento) per consumer che iterano.
+  - `isPairGatedByDoor(door, sx, sy, tx, ty)` → true se `(s)↔(t)` corrisponde alla coppia direzionale.
+  - `findDoorGatingPair(porte, sx, sy, tx, ty)` → la prima porta che gestisce la coppia (o null).
+  - `findDoorsTouchingCell(porte, x, y)` → tutte le porte la cui geometria include `(x, y)` (door cell o vicino +1).
+  - Accetta qualsiasi `{x, y, oriz}` → vale sia per `currentMap.porte` sia per `foundPassages`.
+- **[dungeon-movement-rules.js](mdc:dungeon-movement-rules.js)** — `isWalkable` chiama `findDoorGatingPair` su `currentMap.porte` (porte) e `foundPassages` (passaggi segreti scoperti) per consentire l'attraversamento valo SOLO se la coppia `(s, t)` è la coppia direzionale gestita.
+- **[dungeon-use-map-interaction.js](mdc:dungeon-use-map-interaction.js)** — `isFrontOfDoor`:
+  - Se l'eroe è sulla cella di una porta, ritorna come destinazione il vicino +1 (se apribile).
+  - Se l'eroe è sul vicino +1, ritorna come destinazione la cella della porta.
+  - In ogni altro caso ritorna `null` (incluso il lato -1, NON gestito).
+- **[dungeon-melee-doorway.js](mdc:dungeon-melee-doorway.js)** — `cellIsOpenDoorTile` & `mergeOpenedDoorsAfterStep` (lavorano sulla cella della porta come "tile aperto"; non dipendono dalla geometria).
+- **[dungeon-use-pathfinding.js](mdc:dungeon-use-pathfinding.js)** — usa `useDungeonMovementRules.isWalkable`, quindi il pathfinding (anche dei mostri tramite [dungeon-use-monster-ai.js](mdc:dungeon-use-monster-ai.js)) eredita la geometria direzionale.
+- **[editor/EditorMapGrid.jsx](mdc:editor/EditorMapGrid.jsx)** — Disegna UNA freccia direzionale sul vicino +1: `↓` per `oriz=true`, `→` per `oriz=false`. Ambra per porte, viola per passaggi segreti.
+- **[editor/panels/EditorPanelSelectedCell.jsx](mdc:editor/panels/EditorPanelSelectedCell.jsx)** — Mostra in chiaro il vicino +1 collegato e l'asse di orientamento direzionale.
+
+## Stato della porta (apertura)
+
+`gameSession.openedDoors` è un array di chiavi `"x,y"` riferite alla **cella della porta**. Una porta diventa "aperta" quando:
+- L'eroe (o un mostro) **lascia** la cella della porta (`mergeOpenedDoorsAfterStep` con `atFrom`). Arrivare sulla cella **non** la apre: l'eroe sta sulla porta ma non l'ha ancora attraversata.
+- Si esegue l'azione "Apri porta" (`openPassage` in [dungeon-use-session-manager.js](mdc:dungeon-use-session-manager.js)).
+
+Conseguenza UX: quando l'eroe arriva sulla cella di una porta chiusa, vede comparire il pulsante "Apri porta" (`isFrontOfDoor` ritorna un risultato valido). Se preme il pulsante, la porta entra in `openedDoors` e il pulsante sparisce. Se invece prosegue il movimento attraversando la porta, il commit `atFrom` la apre comunque.
+
+Una porta aperta resta walkable per la propria coppia direzionale.
+
+## Errori tipici da evitare
+
+- ❌ Pensare che la porta gata anche il lato `-1`: gata SOLO la coppia +1 sull'asse di orientamento.
+- ❌ Verificare la passabilità con `isDoor(s) || isDoor(t)` ignorando la direzione: una porta `oriz=true` su `(5,10)` non gata `(5,10)↔(5,9)`.
+- ❌ Verificare la passabilità ignorando l'asse: una porta `oriz=true` non deve consentire passaggi sull'asse X.
+- ❌ Confondere `oriz` con il nome: in JSON `oriz=true` corrisponde a porta visivamente sdraiata (apertura sull'asse Y verso sud).
+- ❌ Posizionare una porta `oriz=true` con `y=19` (bordo sud): il vicino `(x, 20)` è fuori griglia → la porta non gestisce nulla. Spostare la porta di una cella o cambiarne l'orientazione.
+
+## Test di riferimento
+
+- [test/doors/dungeon-door-rules.test.js](mdc:test/doors/dungeon-door-rules.test.js) — funzioni pure (direzionale).
+- [test/doors/dungeon-movement-rules-doors.test.jsx](mdc:test/doors/dungeon-movement-rules-doors.test.jsx) — integrazione porte (lato +1 gestito, lato -1 bloccato, blocco fuori asse, doppia porta per gating bidirezionale).
+- [test/doors/dungeon-movement-rules-passages.test.jsx](mdc:test/doors/dungeon-movement-rules-passages.test.jsx) — integrazione passaggi segreti scoperti (direzionale).
+- [test/doors/dungeon-use-map-interaction.test.jsx](mdc:test/doors/dungeon-use-map-interaction.test.jsx) — `isFrontOfDoor` direzionale (eroe sulla porta o sul vicino +1; -1 → null).
+- [test/doors/dungeon-pathfinding-from-door.test.jsx](mdc:test/doors/dungeon-pathfinding-from-door.test.jsx) — pathfinding da porta verso vicino +1.
+- [test/doors/dungeon-step-from-door.test.jsx](mdc:test/doors/dungeon-step-from-door.test.jsx) — regression test sul flusso `useTurnLogic` + `executeMissionScripts` (race condition risolta).

@@ -1,0 +1,1 @@
+export default function DungeonGameOver(props: { isOpen?: boolean; onExit: () => void }): React.ReactElement | null;

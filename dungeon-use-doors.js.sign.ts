@@ -1,0 +1,1 @@
+export function useDungeonDoors(config: { gameSession: any; boardVisibilityMap: any }): { visibleDoors: { x: number; y: number; img: string }[] };

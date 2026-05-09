@@ -1,0 +1,97 @@
+---
+description: Coordinate system reference for grid cells, entities, JSON files, runtime and editor
+alwaysApply: true
+---
+
+# Sistema di coordinate (mappa 26 × 19)
+
+Costanti: `EDITOR_MAP_WIDTH = 26`, `EDITOR_MAP_HEIGHT = 19` in [editor-map-model.js](mdc:editor-map-model.js).
+
+## Tabella riassuntiva
+
+| Contesto | Convenzione | Range valido | Note |
+|----------|-------------|--------------|------|
+| `mapState.grid[i].x` / `.y` (editor in memoria) | **0-based** | x: 0..25, y: 0..18 | indice array piatto = `y * 26 + x` |
+| `mapState.eroi_start`, `porte`, `scripts` | **1-based** | x: 1..26, y: 1..19 | come nei JSON di gioco |
+| File JSON `public/jsonData/map/*.json` (campo `grid`) | **1-based** | x: 1..26, y: 1..19 | alcune mappe legacy includono celle padding a x=0/y=0 (scartate in import) |
+| File JSON `public/jsonData/tabellone/*.json` (visibilità) | **1-based** | x: 1..26, y: 1..19 | 26×19 = 494 celle |
+| `gameSession.heroes[i]`, `monsters`, `currentMap.grid` (runtime) | **1-based** | x: 1..26, y: 1..19 | combaciano direttamente con la visibility map |
+| Pixel rendering runtime ([dungeon-board.jsx](mdc:dungeon-board.jsx)) | converte `(coord - 1) * 34` | — | tutte le entità sono 1-based |
+| Pixel rendering editor ([editor/EditorMapGrid.jsx](mdc:editor/EditorMapGrid.jsx)) | **celle**: `cell.x * 34` (0-based); **entità**: `(e.x - 1) * 34` (1-based) | — | ibrido: mapState.grid è 0-based, entità no |
+| Display utente (label/tooltip nell'editor) | **1-based** | — | sempre `cell.x + 1, cell.y + 1` |
+
+## Regole di traduzione (boundary)
+
+Le uniche conversioni avvengono al confine import/export delle mappe in [editor-map-model.js](mdc:editor-map-model.js):
+
+- **Import** (`normalizeImportedMap`): grid del file JSON 1-based → `mapState.grid` 0-based (`ex = c.x - 1`). Celle a x=0 o y=0 sono scartate (legacy padding).
+- **Export** (`toExportableMapDocument`): `mapState.grid` 0-based → file JSON 1-based (`x: c.x + 1`).
+- **Playtest stash** (`stashEditorMapForPlaytest` in [editor/editor-playtest-session.js](mdc:editor/editor-playtest-session.js)): salva sempre via `toExportableMapDocument` → formato canonico 1-based.
+- Le entità (`eroi_start`, `porte`, `scripts`) **non** vengono mai shiftate: sono già 1-based in `mapState`.
+
+## Pattern d'uso ricorrenti
+
+### Editor → click su cella della grid
+
+`handleGridClick(x, y)` riceve `x, y` **0-based** (sono indici dell'array della grid). Quando si piazzano entità (heroes, doors, scripts) si converte `+1`:
+
+```js
+// editor/use-editor-map-state.js
+const mapX = x + 1;
+const mapY = y + 1;
+nextStarts.push({ id: heroStartPlacingId, x: mapX, y: mapY });
+```
+
+### Editor → look-up di un'entità su una cella selezionata
+
+La cella selezionata ha `selectedCell.x/y` 0-based; le entità sono 1-based. Quindi confronto con `+1`:
+
+```js
+// editor-game.jsx
+const doorAtSelected = (mapState.porte || []).find(
+  (d) => d.x === editor.selected.x + 1 && d.y === editor.selected.y + 1
+);
+```
+
+### Editor → look-up della visibilità (`valo`) dal tabellone
+
+I dati di `boardData.data` sono 1-based; quando li si applica a una cella editor 0-based si converte con `+1`:
+
+```js
+// editor/EditorMapGrid.jsx
+valoByCoord.get(`${cell.x + 1},${cell.y + 1}`)
+```
+
+### Runtime → confronto entità su cella renderizzata
+
+Il rendering in [dungeon-board.jsx](mdc:dungeon-board.jsx) itera celle 0-based locali, ma confronta con entità 1-based aggiungendo `+1`:
+
+```js
+const hasMonster = visibleMonsters?.some(
+  (m) => m.x === cell.x + 1 && m.y === cell.y + 1
+);
+```
+
+### Runtime → posizionamento pixel
+
+Tutte le entità (1-based) si rendono con shift `-1`:
+
+```js
+style={{ left: (hero.x - 1) * 34, top: (hero.y - 1) * 34 }}
+```
+
+## Errori tipici da evitare
+
+- Salvare nuove entità con `cell.x` (0-based) invece di `cell.x + 1`. Risultato: in playtest l'oggetto appare una cella su/sx.
+- Cercare `mapState.grid.find(c => c.x === entity.x)` (mismatch 0/1). Usa sempre `c.x === entity.x - 1` oppure `editorCellIndex(entity.x - 1, entity.y - 1)`.
+- Leggere visibility / valo con coordinate 0-based: niente match (chiavi a partire da `"1,1"`).
+- Esportare/serializzare `mapState` direttamente con `JSON.stringify(mapState)` invece di `toExportableMapDocument(mapState)`: la grid resta 0-based e il runtime renderizza shiftato.
+
+## File chiave
+
+- [editor-map-model.js](mdc:editor-map-model.js) — `editorCellIndex`, `patchGridCell`, `applyFurnitureSelection`, `normalizeImportedMap`, `toExportableMapDocument`.
+- [editor/use-editor-map-state.js](mdc:editor/use-editor-map-state.js) — `handleGridClick` (0-based) + conversione `+1` per spawn eroi.
+- [editor-game.jsx](mdc:editor-game.jsx) — `toggleDoorAtCell`, `setDoorOrientationAtCell`, `focusEditorCell` (1-based ↔ 0-based).
+- [editor/EditorMapGrid.jsx](mdc:editor/EditorMapGrid.jsx) — render misto (celle 0-based, entità 1-based).
+- [dungeon-board.jsx](mdc:dungeon-board.jsx) — render runtime (tutto 1-based con shift `-1`).
+- [editor/editor-playtest-session.js](mdc:editor/editor-playtest-session.js) — stash/restore della mappa di playtest.

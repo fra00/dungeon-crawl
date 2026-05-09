@@ -1,0 +1,1 @@
+export default function DungeonHeroOrder(props: { heroes: any[]; onConfirmOrder: (orderedHeroIds: number[]) => void }): React.ReactElement | null;

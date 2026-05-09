@@ -1,0 +1,1 @@
+export declare function useDungeonFurniture(config: { gameSession?: any; boardVisibilityMap?: any }): { visibleFurniture: { x: number; y: number; img: string }[] };

@@ -1,0 +1,1 @@
+export declare function useDungeonVisibleMonsters(config: { gameSession: any; boardVisibilityMap: any }): { visibleMonsters: any[] };

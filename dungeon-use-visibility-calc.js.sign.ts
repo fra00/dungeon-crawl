@@ -1,0 +1,1 @@
+export declare function useVisibilityCalc(props: { gameSession: any; visibilityMap: any }): { calculateVisibleCells: (startX: number, startY: number) => { x: number; y: number }[]; hasLineOfSight: (startX: number, startY: number, targetX: number, targetY: number) => boolean };
