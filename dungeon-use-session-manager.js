@@ -50,23 +50,25 @@ export function useDungeonSessionManager({
     if (gameSession == null || gameSession.currentMap == null) return;
     
     const placedHeroes = gameSession.heroes.map(heroState => {
-      const spawnPoint = gameSession.currentMap.eroi_start.find(p => p.id === heroState.heroId);
+      const spawnPoint = gameSession.currentMap.eroi_start.find(
+        (p) => Number(p?.id) === Number(heroState.heroId)
+      );
       const defaultEquipped = (heroState.equipped && heroState.equipped.length > 0)
         ? [...heroState.equipped]
         : [...(heroState.equipment || [])];
+      const base = {
+        ...heroState,
+        isEscaped: false,
+        equipped: defaultEquipped,
+      };
       if (spawnPoint) {
         return {
-          ...heroState,
+          ...base,
           x: spawnPoint.x,
           y: spawnPoint.y,
-          isEscaped: false,
-          equipped: defaultEquipped
         };
       }
-      return {
-        ...heroState,
-        equipped: defaultEquipped
-      };
+      return base;
     });
 
     const initializedSession = {
@@ -576,14 +578,12 @@ export function useDungeonSessionManager({
 
       const updatedMonsters = providedSession.monsters.map(m => m.id === monsterId ? updatedMonster : m);
 
-      let nextSession = {
+      // I mostri attraversano le porte senza aggiungerle a openedDoors: così non si
+      // altera LOS/visibilità per gli eroi e la nebbia non viene rimossa indirettamente.
+      return {
         ...providedSession,
-        monsters: updatedMonsters
+        monsters: updatedMonsters,
       };
-      if (nextX != null && nextY != null) {
-        nextSession = mergeOpenedDoorsAfterStep(nextSession, fromX, fromY, nextX, nextY);
-      }
-      return nextSession;
     });
     return true;
   }, [commitSessionUpdate]);

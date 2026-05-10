@@ -34,6 +34,32 @@ describe("sliceHeroesForMissionMap", () => {
     expect(r.heroes).toHaveLength(4);
     expect(r.preMissionHeroesBackup).toBeNull();
   });
+
+  it("strictSpawnSubset: empty eroi_start → nessun eroe, backup roster", () => {
+    const r = sliceHeroesForMissionMap(roster, { eroi_start: [] }, { strictSpawnSubset: true });
+    expect(r.heroes).toHaveLength(0);
+    expect(r.preMissionHeroesBackup).toEqual(roster);
+  });
+
+  it("strictSpawnSubset: filtra solo gli id negli spawn", () => {
+    const r = sliceHeroesForMissionMap(
+      roster,
+      { eroi_start: [{ id: 2 }] },
+      { strictSpawnSubset: true }
+    );
+    expect(r.heroes.map((h) => h.heroId)).toEqual([2]);
+    expect(r.preMissionHeroesBackup).toHaveLength(4);
+  });
+
+  it("strictSpawnSubset: id senza match → nessun eroe", () => {
+    const r = sliceHeroesForMissionMap(
+      roster,
+      { eroi_start: [{ id: 99 }] },
+      { strictSpawnSubset: true }
+    );
+    expect(r.heroes).toHaveLength(0);
+    expect(r.preMissionHeroesBackup).toEqual(roster);
+  });
 });
 
 describe("heroUsesMissionSpellSelection / missionHeroesNeedSpellSelection", () => {

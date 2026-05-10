@@ -106,8 +106,13 @@ export default function EditorScriptManager({
   selectedCell = null,
   onHighlightStructure = () => {},
   onFocusCell = () => {},
+  monsters = [],
 }) {
   const scripts = mapState.scripts || [];
+  const monsterOptions = useMemo(() => {
+    const list = Array.isArray(monsters) ? monsters.filter((m) => m != null && m.id != null) : [];
+    return [...list].sort((a, b) => Number(a.id) - Number(b.id));
+  }, [monsters]);
   // Cella selezionata sulla mappa (0-based nell'editor) → coordinate 1-based per gli script.
   const selectedMapCoord = useMemo(() => {
     if (!selectedCell) return null;
@@ -140,6 +145,13 @@ export default function EditorScriptManager({
     () => summarizeValidation(selectedScript?.text ?? ""),
     [selectedScript?.text]
   );
+
+  const idmoscUi = useMemo(() => {
+    const raw = Number(selectedScript?.idmosc ?? 0);
+    const currentIdmosc = Number.isFinite(raw) ? raw : 0;
+    const idmoscKnown = monsterOptions.some((m) => Number(m.id) === currentIdmosc);
+    return { currentIdmosc, idmoscKnown };
+  }, [selectedScript?.idmosc, monsterOptions]);
 
   const scriptLabelList = useMemo(
     () => scripts.map((s, i) => `#${i + 1} (${s.x},${s.y}) ev:${s.evento ?? 0}`),
@@ -423,13 +435,38 @@ export default function EditorScriptManager({
                   />
                   morto (richiede mostro morto)
                 </label>
-                <label className="flex items-center gap-1 ml-2">
-                  idmosc:
-                  <NumberInput
-                    value={selectedScript.idmosc ?? 0}
-                    onChange={(v) => updateScript({ idmosc: v })}
-                    className="w-14 ml-0.5"
-                  />
+                <label className="flex items-center gap-1.5 ml-2 min-w-0 flex-wrap">
+                  <span className="shrink-0 text-stone-400">idmosc</span>
+                  {monsterOptions.length > 0 ? (
+                    <select
+                      className="max-w-[min(320px,42vw)] min-w-[140px] bg-stone-800 border border-stone-600 rounded px-2 py-0.5 text-xs"
+                      value={idmoscUi.currentIdmosc}
+                      onChange={(e) =>
+                        updateScript({ idmosc: Number(e.target.value) })
+                      }
+                      title="Mostro che deve essere coinvolto nell’evento di combattimento"
+                    >
+                      {!idmoscUi.idmoscKnown ? (
+                        <option value={idmoscUi.currentIdmosc}>
+                          {idmoscUi.currentIdmosc} — (id non in catalogo)
+                        </option>
+                      ) : null}
+                      {monsterOptions.map((m) => {
+                        const id = Number(m.id);
+                        return (
+                          <option key={id} value={id}>
+                            {id} — {m.nome != null ? String(m.nome) : `Mostro ${id}`}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  ) : (
+                    <NumberInput
+                      value={selectedScript.idmosc ?? 0}
+                      onChange={(v) => updateScript({ idmosc: v })}
+                      className="w-16"
+                    />
+                  )}
                 </label>
                 <button
                   type="button"

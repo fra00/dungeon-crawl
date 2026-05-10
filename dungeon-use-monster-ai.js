@@ -193,8 +193,6 @@ export function useMonsterAI(config) {
 
         let reachablePath = [];
         for (const step of finalPath) {
-          const cellFog = visibilityMap?.data?.find(c => c.x === step.x && c.y === step.y)?.fog;
-          if (cellFog !== false) break; // Stop at fog boundary
           reachablePath.push(step);
           if (reachablePath.length >= movPoints) break;
         }

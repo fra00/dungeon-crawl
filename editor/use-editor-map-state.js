@@ -92,7 +92,9 @@ export function useEditorMapState(monsters = []) {
       if (heroStartPlacingId != null) {
         setMapStateTracked((prev) => {
           const nextStarts = [...(prev.eroi_start || [])];
-          const idx = nextStarts.findIndex((row) => row.id === heroStartPlacingId);
+          const idx = nextStarts.findIndex(
+            (row) => Number(row.id) === Number(heroStartPlacingId)
+          );
           const mapX = x + 1;
           const mapY = y + 1;
           if (idx >= 0) nextStarts[idx] = { ...nextStarts[idx], x: mapX, y: mapY };

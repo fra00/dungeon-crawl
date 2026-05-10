@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { cellAllowsMapExit } from "./editor-map-model.js";
 import { cellIsOpenDoorTile, mergeOpenedDoorsAfterStep } from "./dungeon-melee-doorway.js";
 import { moveCurrentHeroInSession } from "./dungeon-script-runtime.js";
 
@@ -36,6 +37,8 @@ export function useTurnLogic({
   const previousActiveTurnKey = useRef(null);
   const objectiveNotifyMissionKeyRef = useRef(null);
   const previousObjectiveCompletedRef = useRef(false);
+  /** Ritirata: conferma già data prima di entrare sulla cella scale (evita doppio dialog e loop). */
+  const pendingStairsExitConfirmedRef = useRef(false);
 
   // -----------------------------------------------------------------------
   // Watchdog: mantiene `canOpenDoor` SEMPRE sincronizzato con la posizione
@@ -85,7 +88,11 @@ export function useTurnLogic({
     const treasureTarget = header.tesoro_finale;
     const hasTreasureObjective = treasureTarget && (treasureTarget.x !== 0 || treasureTarget.y !== 0);
 
-    if (bossObjectiveId == null && !itemObjectiveId && !weaponObjectiveId && !hasTreasureObjective) return true;
+    // Nessun obiettivo nel header (boss/tesoro/oggetto/arma): la riuscita è "trovare l'uscita".
+    // L'uscita dalle scale completa la missione; non serve altro obiettivo in editor o in gioco.
+    if (bossObjectiveId == null && !itemObjectiveId && !weaponObjectiveId && !hasTreasureObjective) {
+      return true;
+    }
 
     if (bossObjectiveId != null) {
       const bossAlive = gameSession.monsters?.some(m => m.monster?.id === bossObjectiveId);
@@ -221,13 +228,17 @@ export function useTurnLogic({
     if (!hero) return false;
 
     const mapCell = gameSession?.currentMap?.grid?.find(c => c.x === hero.x && c.y === hero.y);
-    if (!mapCell || !mapCell.fine) return false;
+    if (!mapCell || !cellAllowsMapExit(mapCell)) return false;
 
     if (!isMissionObjectiveCompleted) {
-      const confirm = window.confirm("Vuoi ritirarti dalle scale senza completare la missione?");
-      if (!confirm) {
-        onNotify("Uscita annullata. Completa la missione o conferma la ritirata dalle scale.");
-        return false;
+      if (pendingStairsExitConfirmedRef.current) {
+        pendingStairsExitConfirmedRef.current = false;
+      } else {
+        const confirm = window.confirm("Vuoi ritirarti dalle scale senza completare la missione?");
+        if (!confirm) {
+          onNotify("Uscita annullata. Completa la missione o conferma la ritirata dalle scale.");
+          return false;
+        }
       }
     }
 
@@ -627,6 +638,7 @@ export function useTurnLogic({
     const activeTurnKey = `${gameSession?.currentTurn}-${currentHero?.heroId}`;
 
     if (previousActiveTurnKey.current !== activeTurnKey) {
+      pendingStairsExitConfirmedRef.current = false;
       setTurnPhase({ HasMoved: false, HasPerformedAction: false, IsTurnFinished: false });
       setMovementPoints(null);
       setAttacksPerformed(0);
@@ -667,7 +679,31 @@ export function useTurnLogic({
     const timer = setTimeout(() => {
       const nextPos = activePath[1];
       const oldPos = activePath[0];
-      
+
+      const destCellForExit = gameSession?.currentMap?.grid?.find(
+        (c) => c.x === nextPos.x && c.y === nextPos.y
+      );
+      if (
+        destCellForExit &&
+        cellAllowsMapExit(destCellForExit) &&
+        !isMissionObjectiveCompleted
+      ) {
+        if (!pendingStairsExitConfirmedRef.current) {
+          const ok = window.confirm(
+            "Vuoi ritirarti dalle scale senza completare la missione?"
+          );
+          if (!ok) {
+            onNotify(
+              "Uscita annullata. Completa la missione o conferma la ritirata dalle scale."
+            );
+            setActivePath([{ x: oldPos.x, y: oldPos.y }]);
+            setIsMoving(false);
+            return;
+          }
+          pendingStairsExitConfirmedRef.current = true;
+        }
+      }
+
       setMovementPoints(prev => (prev !== null ? prev - 1 : 0));
       
       const oldVis = visibilityMap?.data?.find(c => c.x === oldPos.x && c.y === oldPos.y);
@@ -768,7 +804,20 @@ export function useTurnLogic({
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [activePath, isMoving, movementPoints, gameSession, visibilityMap, trapsLogic, sessionManager, mapInteractionLogic, attemptExitFromCurrentCell, forceTurnExhausted]);
+  }, [
+    activePath,
+    isMoving,
+    movementPoints,
+    gameSession,
+    visibilityMap,
+    trapsLogic,
+    sessionManager,
+    mapInteractionLogic,
+    attemptExitFromCurrentCell,
+    forceTurnExhausted,
+    isMissionObjectiveCompleted,
+    onNotify,
+  ]);
 
   return {
     turnPhase,

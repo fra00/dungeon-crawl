@@ -13,6 +13,7 @@ export default function EditorScriptDialog({
   selectedCell = null,
   onHighlightStructure,
   onFocusCell,
+  monsters = [],
 }) {
   useEffect(() => {
     if (!open) return undefined;
@@ -54,6 +55,7 @@ export default function EditorScriptDialog({
         </div>
         <div className="flex-1 min-h-0 p-3">
           <EditorScriptManager
+            monsters={monsters}
             mapState={mapState}
             setMapState={setMapState}
             selectedCell={selectedCell}

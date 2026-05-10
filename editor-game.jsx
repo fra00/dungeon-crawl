@@ -11,6 +11,7 @@ import { applyFurnitureSelection, validateMapState } from "./editor-map-model.js
 import {
   buildDefaultHeroParty,
   buildEditorPlaytestSessionUpdate,
+  mergeCampaignRosterWithCatalog,
   stashEditorMapForPlaytest,
   setEditorPlaytestActive,
 } from "./editor/editor-playtest-session.js";
@@ -55,7 +56,9 @@ export default function EditorGame({
       return;
     }
     const saved = loadCampaign();
-    let party = saved?.heroes?.length ? saved.heroes : buildDefaultHeroParty(staticHeroes, equipment);
+    let party = saved?.heroes?.length
+      ? mergeCampaignRosterWithCatalog(saved.heroes, staticHeroes, equipment)
+      : buildDefaultHeroParty(staticHeroes, equipment);
     if (!party?.length) {
       editor.setLastMessage({
         type: "err",
@@ -64,7 +67,19 @@ export default function EditorGame({
       return;
     }
     const mapDoc = { eroi_start: editor.mapState?.eroi_start || [] };
-    const { heroes: missionParty, preMissionHeroesBackup } = sliceHeroesForMissionMap(party, mapDoc);
+    const { heroes: missionParty, preMissionHeroesBackup } = sliceHeroesForMissionMap(
+      party,
+      mapDoc,
+      { strictSpawnSubset: true }
+    );
+    if (missionParty.length === 0) {
+      editor.setLastMessage({
+        type: "err",
+        text:
+          "Playtest: piazza almeno un punto di partenza (tool eroe) e verifica che l’ID corrisponda a un eroe della campagna salvata. Solo gli eroi con spawn entrano in missione.",
+      });
+      return;
+    }
     stashEditorMapForPlaytest(editor.mapState);
     setEditorPlaytestActive(true);
     onUpdateSession((prev) =>
@@ -333,6 +348,7 @@ export default function EditorGame({
         selectedCell={editor.selected}
         onHighlightStructure={setHighlightedStructure}
         onFocusCell={focusEditorCell}
+        monsters={monsters}
       />
     </div>
   );

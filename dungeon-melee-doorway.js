@@ -25,7 +25,8 @@ export function cellIsOpenDoorTile(gameSession, x, y) {
  *     openedDoors aggiunge "5,2". L'eroe ha attraversato la porta, che resta
  *     aperta per future azioni (melee attraverso porta, fog reveal, ecc.).
  *
- * Call after hero/monster position updates.
+ * Chiamare dopo lo spostamento dell’eroe. I mostri non usano questa funzione
+ * (attraversano la porta senza aggiungerla a `openedDoors`).
  */
 export function mergeOpenedDoorsAfterStep(session, fromX, fromY, toX, toY) {
   if (session == null) return session;

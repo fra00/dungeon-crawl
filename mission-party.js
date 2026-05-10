@@ -5,19 +5,29 @@
 /**
  * @param {Array<{ heroId: unknown }>} heroes
  * @param {{ eroi_start?: Array<{ id: unknown }> } | null | undefined} mapDoc
+ * @param {{ strictSpawnSubset?: boolean }} [options] — `strictSpawnSubset: true` (playtest editor): partecipano
+ *   solo gli eroi con spawn sulla mappa; mai il roster intero se mancano spawn o gli id non coincidono.
  * @returns {{ heroes: typeof heroes; preMissionHeroesBackup: typeof heroes | null }}
  */
-export function sliceHeroesForMissionMap(heroes, mapDoc) {
+export function sliceHeroesForMissionMap(heroes, mapDoc, options = {}) {
   const roster = Array.isArray(heroes) ? heroes : [];
+  const strictSpawnSubset = options.strictSpawnSubset === true;
   const starts = mapDoc?.eroi_start;
   if (!Array.isArray(starts) || starts.length === 0) {
+    if (strictSpawnSubset) {
+      return {
+        heroes: [],
+        preMissionHeroesBackup: roster.length ? roster : null,
+      };
+    }
     return { heroes: roster, preMissionHeroesBackup: null };
   }
   const idSet = new Set(starts.map((s) => Number(s.id)));
   const filtered = roster.filter((h) => idSet.has(Number(h.heroId)));
-  const missionHeroes = filtered.length > 0 ? filtered : roster;
+  const missionHeroes =
+    filtered.length > 0 ? filtered : strictSpawnSubset ? [] : roster;
   const backup =
-    missionHeroes.length < roster.length ? roster : null;
+    roster.length > 0 && missionHeroes.length < roster.length ? roster : null;
   return { heroes: missionHeroes, preMissionHeroesBackup: backup };
 }
 
