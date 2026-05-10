@@ -10,6 +10,7 @@ import {
   patchGridCell,
   toggleWallAt,
   applyFurnitureSelection,
+  cellAllowsMapExit,
 } from "../../editor-map-model.js";
 
 const furnitureCatalog = [
@@ -36,7 +37,40 @@ describe("editor-map-model", () => {
     const s = createEmptyMapState();
     expect(s.grid.length).toBe(EDITOR_MAP_WIDTH * EDITOR_MAP_HEIGHT);
     expect(s.header.matrsf).toBe("default.tbl");
-    expect(s.eroi_start.length).toBe(4);
+    expect(s.eroi_start.length).toBe(0);
+  });
+
+  it("cellAllowsMapExit matches runtime truthiness on fine", () => {
+    expect(cellAllowsMapExit({ fine: 0 })).toBe(false);
+    expect(cellAllowsMapExit({ fine: 1 })).toBe(true);
+    expect(cellAllowsMapExit({ fine: "" })).toBe(false);
+    expect(cellAllowsMapExit({})).toBe(false);
+  });
+
+  it("toExportableMapDocument sets header.nfine to count of exit cells", () => {
+    const s = createEmptyMapState();
+    const i0 = editorCellIndex(0, 0);
+    const i1 = editorCellIndex(1, 0);
+    s.grid[i0] = { ...s.grid[i0], fine: 1 };
+    s.grid[i1] = { ...s.grid[i1], fine: 1 };
+    const doc = toExportableMapDocument(s);
+    expect(doc.header.nfine).toBe(2);
+  });
+
+  it("validateMapState warns when more than 4 exit cells", () => {
+    const s = createEmptyMapState();
+    for (let k = 0; k < 5; k++) {
+      const idx = editorCellIndex(k, 0);
+      s.grid[idx] = { ...s.grid[idx], fine: 1 };
+    }
+    const v = validateMapState(s);
+    expect(v.warnings.some((w) => w.includes("uscita") && w.includes("4"))).toBe(true);
+  });
+
+  it("validateMapState warns when no hero starts defined", () => {
+    const v = validateMapState(createEmptyMapState());
+    expect(v.errors.length).toBe(0);
+    expect(v.warnings.some((w) => w.includes("partenza eroe"))).toBe(true);
   });
 
   it("normalizeImportedMap maps 1-based grid cells to 0-based and fills missing", () => {
@@ -98,7 +132,7 @@ describe("editor-map-model", () => {
 
   it("validateMapState flags invalid hero spawn", () => {
     const s = createEmptyMapState();
-    s.eroi_start[0].x = 99;
+    s.eroi_start = [{ id: 0, x: 99, y: 10 }];
     const v = validateMapState(s);
     expect(v.errors.some((e) => e.includes("partenza"))).toBe(true);
   });

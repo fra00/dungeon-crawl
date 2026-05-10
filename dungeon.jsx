@@ -38,6 +38,12 @@ import { useCampaignManager } from './dungeon-use-campaign-manager';
 import DungeonSpellCastModal from './dungeon-spell-cast-modal';
 import { useMonsterAI } from './dungeon-use-monster-ai';
 import { useDungeonSessionManager } from './dungeon-use-session-manager';
+import DungeonScriptDialog from './dungeon-script-dialog';
+import {
+    mergeMissionHeroesIntoCampaignRoster,
+    missionHeroesNeedSpellSelection,
+    filterHeroesForSpellSelection
+} from './mission-party.js';
 
 const BACKGROUND_MUSIC_VOLUME = 0.25;
 const AUDIO_MUTED_STORAGE_KEY = 'dungeonAudioMuted';
@@ -72,6 +78,7 @@ export default function Dungeon({
     const [targetingItem, setTargetingItem] = useState(null);
     const [drawnTreasureCard, setDrawnTreasureCard] = useState(null);
     const [notificationMessage, setNotificationMessage] = useState(null);
+    const [scriptDialogQueue, setScriptDialogQueue] = useState([]);
 
     const bgMusicRef = useRef(null);
     useEffect(() => {
@@ -113,10 +120,16 @@ export default function Dungeon({
     const boardVisibilityMap = hooksFogOfWar.fogVisibilityMap;
     const hooksVisibilityCalc = useVisibilityCalc({ gameSession, visibilityMap: boardVisibilityMap });
 
+    const enqueueScriptDialogs = useCallback((messages) => {
+        if (!messages?.length) return;
+        setScriptDialogQueue((q) => [...q, ...messages]);
+    }, []);
+
     const hooksSessionManager = useDungeonSessionManager({
         gameSession,
         onUpdateSession,
         onNotify: setNotificationMessage,
+        onScriptBlockingDialog: enqueueScriptDialogs,
         fogOfWarLogic: hooksFogOfWar,
         staticEquipment,
         staticItems
@@ -135,6 +148,11 @@ export default function Dungeon({
             return cell && !cell.fog;
         });
     }, [gameSession?.monsters, boardVisibilityMap]);
+
+    const spellSelectionHeroes = useMemo(
+        () => filterHeroesForSpellSelection(gameSession?.heroes),
+        [gameSession?.heroes]
+    );
 
     const prevMonstersVisibleRef = useRef(false);
     useEffect(() => {
@@ -291,16 +309,29 @@ export default function Dungeon({
         }
     }, [isMissionInitialized, gameSession, hooksSessionManager, treasureDeck]);
 
+    useEffect(() => {
+        if (gameSession && gameSession.isHeroOrderConfirmed === false) {
+            setIsSpellSelectionRequired(false);
+        }
+    }, [gameSession?.isHeroOrderConfirmed]);
+
     const handleConfirmHeroOrder = useCallback((orderedHeroIds) => {
         hooksSessionManager.confirmHeroOrder(orderedHeroIds);
-        const needsMagic = gameSession?.heroes?.some(h => {
-            const cls = h.hero?.classe?.toLowerCase();
-            return cls === "mago" || cls === "elfo";
-        });
-        if (needsMagic) {
-            setIsSpellSelectionRequired(true);
-        }
+        const roster = gameSession?.heroes ?? [];
+        const idOrder = Array.isArray(orderedHeroIds) ? orderedHeroIds : [];
+        const orderedHeroes = idOrder
+            .map((id) => roster.find((h) => Number(h.heroId) === Number(id)))
+            .filter(Boolean);
+        const partyForSpells = orderedHeroes.length > 0 ? orderedHeroes : roster;
+        setIsSpellSelectionRequired(missionHeroesNeedSpellSelection(partyForSpells));
     }, [hooksSessionManager, gameSession]);
+
+    useEffect(() => {
+        if (!gameSession || !isMissionInitialized || gameSession.isHeroOrderConfirmed) return;
+        const list = gameSession.heroes;
+        if (!Array.isArray(list) || list.length !== 1) return;
+        handleConfirmHeroOrder([list[0].heroId]);
+    }, [gameSession, isMissionInitialized, handleConfirmHeroOrder]);
 
     const confirmSpellSelection = useCallback((selection) => {
         if (!gameSession) return;
@@ -332,6 +363,8 @@ export default function Dungeon({
             preEndHeroVitalsById[h.heroId] = { currentBody: h.currentBody, currentMind: h.currentMind };
         });
 
+        const rosterBackup = gameSession.preMissionHeroesBackup;
+
         const scriptResult = hooksSessionManager.executeMissionScripts({
             baseSession: gameSession,
             eventType: 7,
@@ -340,13 +373,25 @@ export default function Dungeon({
 
         const missionEndSession = (scriptResult && scriptResult.handled && scriptResult.session) ? scriptResult.session : gameSession;
 
-        const heroesToPersist = missionEndSession.heroes.map(h => {
-            const vitals = preEndHeroVitalsById[h.heroId];
-            if (vitals) {
-                return { ...h, currentBody: vitals.currentBody, currentMind: vitals.currentMind };
-            }
-            return h;
-        });
+        let heroesToPersist;
+        if (Array.isArray(rosterBackup) && rosterBackup.length > 0) {
+            const merged = mergeMissionHeroesIntoCampaignRoster(rosterBackup, missionEndSession.heroes);
+            heroesToPersist = merged.map(h => {
+                const vitals = preEndHeroVitalsById[h.heroId];
+                if (vitals) {
+                    return { ...h, currentBody: vitals.currentBody, currentMind: vitals.currentMind };
+                }
+                return h;
+            });
+        } else {
+            heroesToPersist = missionEndSession.heroes.map(h => {
+                const vitals = preEndHeroVitalsById[h.heroId];
+                if (vitals) {
+                    return { ...h, currentBody: vitals.currentBody, currentMind: vitals.currentMind };
+                }
+                return h;
+            });
+        }
 
         const savedCampaign = hooksCampaignManager.loadCampaign();
         const preservedMissionIndex = savedCampaign ? savedCampaign.nextMissionIndex : 0;
@@ -409,7 +454,13 @@ export default function Dungeon({
             return;
         }
 
-        if (gameSession.currentTurn > gameSession.heroes.length) {
+        const participatingHeroCount = (gameSession.heroes || []).filter(
+            (h) => (h.turnOrder ?? 0) > 0
+        ).length;
+        if (
+            participatingHeroCount > 0 &&
+            gameSession.currentTurn > participatingHeroCount
+        ) {
             hooksMonsterAI.runMonsterTurn();
         }
     }, [gameSession?.currentTurn, isMissionInitialized, gameSession?.isHeroOrderConfirmed, gameSession?.heroes, hooksTurnLogic, missionObjectiveCompleted, leaveDungeonAfterRetreat, hooksMonsterAI]);
@@ -567,7 +618,9 @@ export default function Dungeon({
                     treasures={hooksTreasure.getFoundTreasures()}
                     triggeredTraps={triggeredTraps}
                     targetingSpell={targetingSpell}
+                    targetingItem={targetingItem}
                     visibilityCalc={hooksVisibilityCalc}
+                    canAttackMonsterAt={hooksTurnLogic.canAttackMonsterAt}
                 />
 
                 {gameSession?.isHeroOrderConfirmed && (
@@ -577,16 +630,20 @@ export default function Dungeon({
                 )}
             </div>
 
-            {isMissionInitialized && !gameSession?.isHeroOrderConfirmed && (
+            {isMissionInitialized &&
+                !gameSession?.isHeroOrderConfirmed &&
+                (gameSession?.heroes?.length || 0) > 1 && (
                 <DungeonHeroOrder
                     heroes={gameSession?.heroes || []}
                     onConfirmOrder={handleConfirmHeroOrder}
                 />
             )}
 
-            {gameSession?.isHeroOrderConfirmed && isSpellSelectionRequired && (
+            {gameSession?.isHeroOrderConfirmed &&
+                isSpellSelectionRequired &&
+                spellSelectionHeroes.length > 0 && (
                 <DungeonSpellSelectionModal
-                    heroes={gameSession?.heroes || []}
+                    heroes={spellSelectionHeroes}
                     allSpells={staticSpells}
                     onConfirmSelection={confirmSpellSelection}
                 />
@@ -642,6 +699,12 @@ export default function Dungeon({
                     onClose={() => setNotificationMessage(null)}
                 />
             )}
+
+            <DungeonScriptDialog
+                open={scriptDialogQueue.length > 0}
+                message={scriptDialogQueue[0] ?? ''}
+                onClose={() => setScriptDialogQueue((q) => q.slice(1))}
+            />
 
             {drawnTreasureCard && (
                 <TreasureCardModal

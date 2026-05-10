@@ -31,6 +31,7 @@ export function useDungeonSessionManager({
   gameSession,
   onUpdateSession,
   onNotify,
+  onScriptBlockingDialog,
   fogOfWarLogic,
   staticEquipment,
   staticItems
@@ -92,7 +93,11 @@ export function useDungeonSessionManager({
         if (fogOfWarLogic?.revealFromPoint) fogOfWarLogic.revealFromPoint(point.x, point.y);
       });
     }
-  }, [gameSession, commitSessionUpdate, onNotify, fogOfWarLogic]);
+
+    if (scriptResult.blockingDialogs?.length > 0 && onScriptBlockingDialog) {
+      onScriptBlockingDialog(scriptResult.blockingDialogs);
+    }
+  }, [gameSession, commitSessionUpdate, onNotify, onScriptBlockingDialog, fogOfWarLogic]);
 
   const confirmHeroOrder = useCallback((orderedHeroIds) => {
     if (gameSession == null || gameSession.isHeroOrderConfirmed === true) return;
@@ -106,12 +111,15 @@ export function useDungeonSessionManager({
         return providedSession;
       }
 
-      const updatedHeroes = providedSession.heroes.map(hero => {
-        const nextTurnOrder = orderedHeroIds.indexOf(hero.heroId) + 1;
-        if (nextTurnOrder > 0) {
-          return { ...hero, turnOrder: nextTurnOrder };
+      const orderedIds = Array.isArray(orderedHeroIds) ? orderedHeroIds : [];
+      const updatedHeroes = providedSession.heroes.map((hero) => {
+        const idx = orderedIds.findIndex(
+          (id) => Number(id) === Number(hero.heroId)
+        );
+        if (idx >= 0) {
+          return { ...hero, turnOrder: idx + 1 };
         }
-        return hero;
+        return { ...hero, turnOrder: 0 };
       });
 
       return {
@@ -689,8 +697,12 @@ export function useDungeonSessionManager({
       });
     }
 
+    if (runtimeResult.blockingDialogs?.length > 0 && onScriptBlockingDialog) {
+      onScriptBlockingDialog(runtimeResult.blockingDialogs);
+    }
+
     return runtimeResult;
-  }, [gameSession, commitSessionUpdate, onNotify, fogOfWarLogic]);
+  }, [gameSession, commitSessionUpdate, onNotify, onScriptBlockingDialog, fogOfWarLogic]);
 
   const moveCurrentHeroTo = useCallback((nextX, nextY, baseSession) => {
     return commitSessionUpdate((providedSession) => {

@@ -8,7 +8,7 @@
  * - bilanciamento dei blocchi condizionali (`serand`/`sestanza`/`seogg`/
  *   `searma` aprono, `end` chiude);
  * - aritmetica argomenti (numero e tipo per i comandi più frequenti);
- * - quote bilanciate per messaggi `msg`.
+ * - quote bilanciate per messaggi `msg` / `dlg`.
  *
  * NON è un validatore semantico: non sa se l'`idstanza` esiste, se l'item
  * `aggogg N` punta a un oggetto valido, ecc. Solo "almeno è digeribile dal
@@ -20,6 +20,7 @@
 
 export const VALIDATOR_KEYWORDS = new Set([
   "serand", "sestanza", "seogg", "searma", "pospsg", "possta", "msg",
+  "dlg",
   "posroc", "img", "posrocinv", "posmostro", "posps", "posporta",
   "aggogg", "aggarma", "aggoroid", "rimogg", "rrndogg", "fineturno",
   "aggoro", "agghppsg", "agghp", "att", "noatt", "noattarma", "end",
@@ -39,6 +40,7 @@ const ARG_RULES = {
   pospsg: { min: 2, max: 3, desc: "pospsg <x>, <y>[, <consenti_overlap>]" },
   possta: { min: 2, max: 2, desc: "possta <x>, <y>" },
   msg: { min: 1, max: null, desc: "msg <testo>" },
+  dlg: { min: 0, max: null, desc: "dlg <testo>" },
   posroc: { min: 2, max: 2, desc: "posroc <x>, <y>" },
   img: { min: 3, max: 3, desc: "img <path>, <x>, <y>" },
   posrocinv: { min: 2, max: 2, desc: "posrocinv <x>, <y>" },

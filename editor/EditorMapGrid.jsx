@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from "react";
-import { EDITOR_MAP_WIDTH, EDITOR_MAP_HEIGHT } from "../editor-map-model.js";
+import { EDITOR_MAP_WIDTH, EDITOR_MAP_HEIGHT, cellAllowsMapExit } from "../editor-map-model.js";
 import {
   EDITOR_CELL_PX,
   cellHasMonster,
@@ -253,7 +253,9 @@ export default function EditorMapGrid({
             <button
               key={`${cell.x}-${cell.y}`}
               type="button"
-              title={`(${cell.x + 1},${cell.y + 1})${valoLabel != null ? ` · valo ${valoLabel}` : ""}`}
+              title={`(${cell.x + 1},${cell.y + 1})${valoLabel != null ? ` · valo ${valoLabel}` : ""}${
+                cellAllowsMapExit(cell) ? " · uscita mappa (scale)" : ""
+              }`}
               className={`absolute z-[10] box-border flex items-center justify-center p-0 overflow-visible ${
                 wall ? "" : "bg-black/0 hover:bg-amber-400/15"
               } ${magic ? "ring-1 ring-violet-500/60 ring-inset" : ""} ${
@@ -328,6 +330,14 @@ export default function EditorMapGrid({
                   className="relative z-[6]"
                 />
               ) : null}
+              {cellAllowsMapExit(cell) && (
+                <span
+                  className="absolute top-0 left-0 pointer-events-none text-[8px] font-bold leading-none px-0.5 py-0.5 rounded-br bg-teal-700/95 text-teal-50 z-[9] shadow-sm"
+                  title="Uscita dalla mappa"
+                >
+                  U
+                </span>
+              )}
               {valoLabel != null && (
                 <span className="absolute bottom-0 left-0 right-0 pointer-events-none text-[6px] leading-none font-mono text-amber-200/95 text-center bg-black/50 z-[8]">
                   {valoLabel}

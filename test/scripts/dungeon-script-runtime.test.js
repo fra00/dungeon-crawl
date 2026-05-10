@@ -85,6 +85,18 @@ describe("executeDungeonScripts", () => {
     expect(r.handled).toBe(false);
     expect(r.notifications).toEqual([]);
     expect(r.revealPoints).toEqual([]);
+    expect(r.blockingDialogs).toEqual([]);
+    expect(r.scriptSuspended).toBe(false);
+  });
+
+  it("dlg apre modale (blockingDialogs) e salta i comandi successivi nello stesso script", () => {
+    const session = sessionWithScripts([
+      { x: 1, y: 1, evento: 6, text: "msg prima; dlg attendi; msg dopo;" },
+    ]);
+    const r = executeDungeonScripts({ session, eventType: 6 });
+    expect(r.notifications).toEqual(["prima"]);
+    expect(r.blockingDialogs).toEqual(["attendi"]);
+    expect(r.scriptSuspended).toBe(true);
   });
 
   it("ignora script con testo vuoto o evento diverso", () => {

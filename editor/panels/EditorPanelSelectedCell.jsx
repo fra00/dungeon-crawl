@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { EditorCatalogIdSelect, editorCatalogSelectClass } from "../EditorCatalogSelects.jsx";
 import EditorCollapsibleSection from "../ui/EditorCollapsibleSection.jsx";
 import { cellHasMonster, findMobileEntryByImg } from "../editor-map-visual.js";
+import { cellAllowsMapExit } from "../../editor-map-model.js";
 
 const cellSelectClass = `${editorCatalogSelectClass} px-1`;
 
@@ -67,7 +68,19 @@ export default function EditorPanelSelectedCell({
             </span>
           )}
           {hasStructure && <span className="px-1 py-0.5 rounded bg-blue-900/60 text-blue-200">Struttura</span>}
-          {!hasMonster && !hasTreasure && !hasTrap && !hasStructure && (
+          {cellAllowsMapExit(selectedCell) && (
+            <span
+              className="px-1 py-0.5 rounded bg-teal-900/70 text-teal-100 ring-1 ring-teal-500/50"
+              title="Uscita dalla missione (scale)"
+            >
+              Uscita
+            </span>
+          )}
+          {!hasMonster &&
+            !hasTreasure &&
+            !hasTrap &&
+            !hasStructure &&
+            !cellAllowsMapExit(selectedCell) && (
             <span className="px-1 py-0.5 rounded bg-stone-800 text-stone-300">Vuota</span>
           )}
         </div>
@@ -87,17 +100,28 @@ export default function EditorPanelSelectedCell({
             />
             arnt.inv (blocco magico)
           </label>
-          <label className="block">
-            fine (0 = no uscita)
-            <input
-              type="number"
-              className="w-full bg-stone-800 border border-stone-600 rounded px-2 py-1 mt-0.5"
-              value={selectedCell.fine ?? 0}
-              onChange={(e) =>
-                applyCellPatch(selectedCell.x, selectedCell.y, { fine: Number(e.target.value) })
-              }
-            />
-          </label>
+          <div className="rounded border border-teal-800/50 bg-teal-950/25 px-2 py-2 space-y-2">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-0.5 shrink-0"
+                checked={cellAllowsMapExit(selectedCell)}
+                onChange={(e) =>
+                  applyCellPatch(selectedCell.x, selectedCell.y, {
+                    fine: e.target.checked ? 1 : 0,
+                  })
+                }
+              />
+              <span>
+                <span className="text-teal-100/95 font-medium">Uscita dalla mappa (scale)</span>
+                <span className="block text-[11px] text-stone-400 mt-0.5 leading-snug">
+                  Se attiva, l&apos;eroe può uscire dal dungeon da questa cella (come nelle mappe HQ). Di solito si
+                  collocano sulle celle delle scale; al massimo 4 uscite sono tipiche. Nel JSON il campo è{" "}
+                  <code className="text-amber-200/90">fine</code> (0 = no, ≠0 = sì).
+                </span>
+              </span>
+            </label>
+          </div>
           <label className="flex items-center gap-2">
             <input
               type="checkbox"

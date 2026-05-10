@@ -9,6 +9,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { PageNavigationEnum } from "./domain-core";
 import { useCampaignManager } from "./dungeon-use-campaign-manager";
+import { sliceHeroesForMissionMap } from "./mission-party.js";
 
 export default function PlayGame({
   gameSession = null,
@@ -106,13 +107,18 @@ export default function PlayGame({
         const response = await fetch(`/jsonData/map/${filename}`);
         if (!response.ok) throw new Error("Failed to fetch map data");
         const mapData = await response.json();
+        const { heroes: missionHeroes, preMissionHeroesBackup } = sliceHeroesForMissionMap(
+          heroesForMission,
+          mapData
+        );
 
         onUpdateSession((prevSession) => {
           const baseSession = prevSession || gameSession || {};
           return {
             ...baseSession,
             campaignName: campaign.nome_campagna,
-            heroes: heroesForMission,
+            heroes: missionHeroes,
+            preMissionHeroesBackup,
             currentMap: mapData,
             currentMissionIndex: index,
             monsters: [],

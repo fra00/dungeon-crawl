@@ -11,6 +11,18 @@ export function editorCellIndex(x, y) {
   return y * EDITOR_MAP_WIDTH + x;
 }
 
+/**
+ * True se la cella consente l'uscita dal dungeon (scale / fine missione sul tabellone).
+ * Allineato al runtime: `mapCell.fine` truthy e ≠ 0 numerico.
+ */
+export function cellAllowsMapExit(cell) {
+  const f = cell?.fine;
+  if (f == null || f === "") return false;
+  if (typeof f === "number") return f !== 0;
+  const n = Number(f);
+  return Number.isFinite(n) ? n !== 0 : true;
+}
+
 export function patchGridCell(grid, x, y, patch) {
   const idx = editorCellIndex(x, y);
   const cur = grid[idx];
@@ -146,12 +158,7 @@ export function createEmptyMapState() {
   return {
     header: createDefaultHeader(),
     grid,
-    eroi_start: [
-      { id: 0, x: 4, y: 15 },
-      { id: 1, x: 5, y: 15 },
-      { id: 2, x: 5, y: 16 },
-      { id: 3, x: 4, y: 16 },
-    ],
+    eroi_start: [],
     porte: [],
     scripts: [],
   };
@@ -215,7 +222,7 @@ export function normalizeImportedMap(raw) {
   return {
     header: { ...createDefaultHeader(), ...(obj.header || {}) },
     grid,
-    eroi_start: Array.isArray(obj.eroi_start) ? obj.eroi_start.map((e) => ({ ...e })) : createEmptyMapState().eroi_start,
+    eroi_start: Array.isArray(obj.eroi_start) ? obj.eroi_start.map((e) => ({ ...e })) : [],
     porte: Array.isArray(obj.porte) ? obj.porte.map((d) => ({ ...d })) : [],
     scripts: Array.isArray(obj.scripts) ? obj.scripts.map((s) => ({ ...s })) : [],
   };
@@ -245,6 +252,9 @@ export function validateMapState(state, options = {}) {
       errors.push(`Punto partenza eroe (${start.id}) fuori mappa.`);
     }
   }
+  if (!(state.eroi_start || []).length) {
+    warnings.push("Nessun punto di partenza eroe definito: in gioco servono spawn in eroi_start per ogni eroe della campagna.");
+  }
 
   for (const d of state.porte || []) {
     if (d.x < 1 || d.x > EDITOR_MAP_WIDTH || d.y < 1 || d.y > EDITOR_MAP_HEIGHT) {
@@ -261,6 +271,13 @@ export function validateMapState(state, options = {}) {
     }
   }
 
+  const exitCells = (state.grid || []).filter(cellAllowsMapExit);
+  if (exitCells.length > 4) {
+    warnings.push(
+      `${exitCells.length} celle di uscita dalla mappa (campo fine): di solito se ne usano al massimo 4 (scale).`
+    );
+  }
+
   return { errors, warnings };
 }
 
@@ -272,6 +289,7 @@ export function validateMapState(state, options = {}) {
 export function toExportableMapDocument(state) {
   const header = { ...state.header };
   header.nscript = Array.isArray(state.scripts) ? state.scripts.length : 0;
+  header.nfine = (state.grid || []).filter(cellAllowsMapExit).length;
   return {
     header,
     grid: (state.grid || []).map((c) => ({ ...c, x: c.x + 1, y: c.y + 1 })),

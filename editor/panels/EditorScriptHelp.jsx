@@ -93,7 +93,8 @@ const COMMANDS_HERO = [
 ];
 
 const COMMANDS_UI = [
-  { cmd: "msg <testo>", desc: "Mostra una notifica testuale. È anche il fallback per le righe non riconosciute come comandi (utile per descrizioni narrative)." },
+  { cmd: "msg <testo>", desc: "Mostra una notifica testuale (toast). È anche il fallback per le righe non riconosciute come comandi (utile per descrizioni narrative)." },
+  { cmd: "dlg <testo>", desc: "Apre una finestra modale con il testo e il pulsante «Chiudi»; resta aperta finché il giocatore non chiude. Interrompe l'esecuzione dello script corrente: i comandi scritti dopo dlg nello stesso script non vengono eseguiti." },
   { cmd: "img <src>,<x>,<y>", desc: "Sovrappone un'immagine (es. /img/...) sulla cella (x,y) come scriptImage." },
 ];
 
@@ -191,8 +192,14 @@ export default function EditorScriptHelp() {
         <CmdTable rows={COMMANDS_HERO} />
       </HelpDetails>
 
-      <HelpDetails summary="Interfaccia (messaggi e immagini)">
+      <HelpDetails summary="Interfaccia (messaggi, dialogo e immagini)">
         <CmdTable rows={COMMANDS_UI} />
+        <p className="mt-2 text-stone-400">
+          Usa <code className="text-amber-200">dlg</code> quando serve che il giocatore legga e confermi con «Chiudi»; usa{" "}
+          <code className="text-amber-200">msg</code> per messaggi brevi non bloccanti. Se più script combaciano con lo
+          stesso evento e il primo esegue <code className="text-amber-200">dlg</code>, gli script successivi in coda non
+          partono fino al prossimo trigger dell&apos;evento (in pratica vengono saltati in quell&apos;invocazione).
+        </p>
       </HelpDetails>
 
       <HelpDetails summary="Combattimento">
@@ -206,6 +213,15 @@ export default function EditorScriptHelp() {
             <pre className="bg-stone-950/80 border border-stone-700 rounded px-2 py-1 font-mono text-[11px] whitespace-pre-wrap">{`sestanza 13;
 msg Una luce strana filtra dalle pareti...;
 end;`}</pre>
+          </div>
+          <div>
+            <p className="text-stone-400 mb-1">Dialogo modale obbligatorio (lettura + Chiudi):</p>
+            <pre className="bg-stone-950/80 border border-stone-700 rounded px-2 py-1 font-mono text-[11px] whitespace-pre-wrap">{`dlg Leggi questo messaggio prima di proseguire.;
+possta 10,10;`}</pre>
+            <p className="text-stone-500 mt-1 text-[10px]">
+              Nota: dopo dlg lo script si interrompe; qui <code className="text-amber-200/80">possta</code> non viene
+              eseguito. Metti i comandi prima di dlg se devono applicarsi insieme.
+            </p>
           </div>
           <div>
             <p className="text-stone-400 mb-1">

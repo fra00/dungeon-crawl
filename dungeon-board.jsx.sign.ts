@@ -10,6 +10,8 @@ export default function DungeonBoard(props: {
   treasures?: { x: number; y: number; img: string }[];
   triggeredTraps?: { x: number; y: number; tipo: number }[];
   targetingSpell?: any;
+  targetingItem?: unknown;
+  canAttackMonsterAt?: (monsterId: number) => boolean;
   visibilityCalc: {
     calculateVisibleCells: (startX: number, startY: number) => { x: number; y: number }[];
     hasLineOfSight: (startX: number, startY: number, targetX: number, targetY: number) => boolean;

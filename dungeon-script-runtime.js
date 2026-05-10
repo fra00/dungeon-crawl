@@ -11,6 +11,7 @@ import { MapDoor } from "./domain-map";
 
 const KNOWN_KEYWORDS = new Set([
   "serand", "sestanza", "seogg", "searma", "pospsg", "possta", "msg",
+  "dlg",
   "posroc", "img", "posrocinv", "posmostro", "posps", "posporta",
   "aggogg", "aggarma", "aggoroid", "rimogg", "rrndogg", "fineturno",
   "aggoro", "agghppsg", "agghp", "att", "noatt", "noattarma", "end"
@@ -325,10 +326,22 @@ const executeCommand = (node, session, effects, notifications, revealPoints, act
   }
 };
 
-const executeAST = (ast, session, context, effects, notifications, revealPoints, memoizedRandoms, activeHero, visibilityMap, random) => {
+const executeAST = (
+  ast,
+  session,
+  context,
+  effects,
+  notifications,
+  revealPoints,
+  memoizedRandoms,
+  activeHero,
+  visibilityMap,
+  random,
+  blockingDialogs
+) => {
   for (const node of ast) {
     const cmd = node.cmd;
-    const args = node.args.split(',').map(s => s.trim());
+    const args = node.args.split(",").map((s) => s.trim());
 
     if (cmd === "serand") {
       const a = args[0];
@@ -338,37 +351,113 @@ const executeAST = (ast, session, context, effects, notifications, revealPoints,
         memoizedRandoms[a] = Math.floor((b + 1) * random());
       }
       if (memoizedRandoms[a] === c) {
-        executeAST(node.children, session, context, effects, notifications, revealPoints, memoizedRandoms, activeHero, visibilityMap, random);
+        if (
+          executeAST(
+            node.children,
+            session,
+            context,
+            effects,
+            notifications,
+            revealPoints,
+            memoizedRandoms,
+            activeHero,
+            visibilityMap,
+            random,
+            blockingDialogs
+          )
+        ) {
+          return true;
+        }
       }
     } else if (cmd === "sestanza") {
       const expectedRoomId = args[0];
       let actualRoomId = context?.roomId;
-      // Se il chiamante ha passato un context senza roomId valido, ricaviamolo
-      // dalla posizione attuale dell'eroe sulla visibility map.
-      if ((actualRoomId == null) && activeHero) {
+      if (actualRoomId == null && activeHero) {
         actualRoomId = getRoomIdFromVisibilityMap(visibilityMap, activeHero.x, activeHero.y);
       }
       if (actualRoomId != null && String(actualRoomId) === String(expectedRoomId)) {
-        executeAST(node.children, session, context, effects, notifications, revealPoints, memoizedRandoms, activeHero, visibilityMap, random);
+        if (
+          executeAST(
+            node.children,
+            session,
+            context,
+            effects,
+            notifications,
+            revealPoints,
+            memoizedRandoms,
+            activeHero,
+            visibilityMap,
+            random,
+            blockingDialogs
+          )
+        ) {
+          return true;
+        }
       }
     } else if (cmd === "seogg") {
       const itemId = parseInt(args[0], 10);
       if (activeHero?.inventory?.includes(itemId)) {
-        executeAST(node.children, session, context, effects, notifications, revealPoints, memoizedRandoms, activeHero, visibilityMap, random);
+        if (
+          executeAST(
+            node.children,
+            session,
+            context,
+            effects,
+            notifications,
+            revealPoints,
+            memoizedRandoms,
+            activeHero,
+            visibilityMap,
+            random,
+            blockingDialogs
+          )
+        ) {
+          return true;
+        }
       }
     } else if (cmd === "searma") {
       const equipId = parseInt(args[0], 10);
       if (activeHero?.equipment?.includes(equipId) || activeHero?.equipped?.includes(equipId)) {
-        executeAST(node.children, session, context, effects, notifications, revealPoints, memoizedRandoms, activeHero, visibilityMap, random);
+        if (
+          executeAST(
+            node.children,
+            session,
+            context,
+            effects,
+            notifications,
+            revealPoints,
+            memoizedRandoms,
+            activeHero,
+            visibilityMap,
+            random,
+            blockingDialogs
+          )
+        ) {
+          return true;
+        }
       }
+    } else if (cmd === "dlg") {
+      blockingDialogs.push(node.args != null ? String(node.args) : "");
+      return true;
     } else {
       executeCommand(node, session, effects, notifications, revealPoints, activeHero, random);
     }
   }
+  return false;
 };
 
 export const executeDungeonScripts = ({ session, eventType, context = {}, visibilityMap = null, random = Math.random }) => {
-  if (!session) return { session, handled: false, notifications: [], revealPoints: [], effects: {} };
+  if (!session) {
+    return {
+      session,
+      handled: false,
+      notifications: [],
+      revealPoints: [],
+      effects: {},
+      blockingDialogs: [],
+      scriptSuspended: false
+    };
+  }
 
   const clonedSession = JSON.parse(JSON.stringify(session));
   if (!Array.isArray(clonedSession.triggeredScripts)) clonedSession.triggeredScripts = [];
@@ -388,6 +477,8 @@ export const executeDungeonScripts = ({ session, eventType, context = {}, visibi
   const notifications = [];
   const revealPoints = [];
   const memoizedRandoms = {};
+  const blockingDialogs = [];
+  let scriptSuspended = false;
 
   const scripts = clonedSession.currentMap?.scripts || [];
 
@@ -405,10 +496,27 @@ export const executeDungeonScripts = ({ session, eventType, context = {}, visibi
 
     handled = true;
     const ast = parseScript(script.text);
-    executeAST(ast, clonedSession, context, effects, notifications, revealPoints, memoizedRandoms, activeHero, visibilityMap, random);
+    const suspended = executeAST(
+      ast,
+      clonedSession,
+      context,
+      effects,
+      notifications,
+      revealPoints,
+      memoizedRandoms,
+      activeHero,
+      visibilityMap,
+      random,
+      blockingDialogs
+    );
 
     if (script.unavolta && !clonedSession.triggeredScripts.includes(scriptKey)) {
       clonedSession.triggeredScripts.push(scriptKey);
+    }
+
+    if (suspended) {
+      scriptSuspended = true;
+      break;
     }
   }
 
@@ -421,6 +529,8 @@ export const executeDungeonScripts = ({ session, eventType, context = {}, visibi
     handled,
     notifications,
     revealPoints,
-    effects
+    effects,
+    blockingDialogs,
+    scriptSuspended
   };
 };

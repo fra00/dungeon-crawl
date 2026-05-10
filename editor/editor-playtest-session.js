@@ -80,13 +80,14 @@ export function buildDefaultHeroParty(staticHeroes, staticEquipment) {
 /**
  * Aggiornamento sessione per avviare il dungeon con la mappa corrente dall’editor.
  */
-export function buildEditorPlaytestSessionUpdate(prevSession, { mapState, campaignName, heroes }) {
+export function buildEditorPlaytestSessionUpdate(prevSession, { mapState, campaignName, heroes, preMissionHeroesBackup = null }) {
   const mapDoc = toExportableMapDocument(mapState);
   const baseSession = prevSession != null ? prevSession : {};
   return {
     ...baseSession,
     campaignName: campaignName || "Playtest editor",
     heroes,
+    preMissionHeroesBackup,
     currentMap: mapDoc,
     currentMissionIndex: -1,
     monsters: [],

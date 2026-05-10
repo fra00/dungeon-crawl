@@ -35,6 +35,7 @@ export default function EditorMapSidebar({
   isSelectedFinalTreasure = false,
   onToggleFinalTreasure = () => {},
   onOpenScriptDialog = () => {},
+  heroes = [],
 }) {
   const TAB_KEY = "dg_editor_active_tab";
   const tabs = useMemo(
@@ -88,6 +89,12 @@ export default function EditorMapSidebar({
       </div>
       <div className="mt-2 overflow-y-auto min-h-0 pr-1 space-y-3">
         {activeTab === "cell" && (
+          <>
+            <p className="text-[11px] text-stone-400 leading-snug px-1 -mt-1">
+              Le <strong className="text-teal-300/95">uscite dal dungeon</strong> (scale) si impostano nel riquadro{" "}
+              <em>Base &amp; Struttura</em>: contrassegno <span className="font-mono text-teal-200">U</span> sulla griglia.
+              Di solito sono al massimo quattro celle.
+            </p>
           <EditorPanelSelectedCell
             selectedCell={selectedCell}
             applyCellPatch={applyCellPatch}
@@ -103,6 +110,7 @@ export default function EditorMapSidebar({
             isFinalTreasure={isSelectedFinalTreasure}
             onToggleFinalTreasure={onToggleFinalTreasure}
           />
+          </>
         )}
 
         {activeTab === "mission" && (
@@ -132,6 +140,8 @@ export default function EditorMapSidebar({
             <EditorCollapsibleSection title="Start eroi" defaultOpen={false}>
               <EditorPanelHeroStarts
                 mapState={mapState}
+                setMapState={setMapState}
+                heroes={heroes}
                 heroStartPlacingId={heroStartPlacingId}
                 setHeroStartPlacingId={setHeroStartPlacingId}
               />

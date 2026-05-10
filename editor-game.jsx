@@ -14,6 +14,7 @@ import {
   stashEditorMapForPlaytest,
   setEditorPlaytestActive,
 } from "./editor/editor-playtest-session.js";
+import { sliceHeroesForMissionMap } from "./mission-party.js";
 
 export default function EditorGame({
   onChangePageView = () => {},
@@ -62,13 +63,16 @@ export default function EditorGame({
       });
       return;
     }
+    const mapDoc = { eroi_start: editor.mapState?.eroi_start || [] };
+    const { heroes: missionParty, preMissionHeroesBackup } = sliceHeroesForMissionMap(party, mapDoc);
     stashEditorMapForPlaytest(editor.mapState);
     setEditorPlaytestActive(true);
     onUpdateSession((prev) =>
       buildEditorPlaytestSessionUpdate(prev, {
         mapState: editor.mapState,
         campaignName: campaign?.nome_campagna,
-        heroes: party,
+        heroes: missionParty,
+        preMissionHeroesBackup,
       })
     );
     if (v.warnings.length > 0) {
@@ -293,6 +297,7 @@ export default function EditorGame({
         <EditorMapSidebar
           mapState={editor.mapState}
           setMapState={editor.setMapState}
+          heroes={staticHeroes}
           selectedCell={editor.selectedCell}
           applyCellPatch={editor.applyCellPatch}
           monsters={monsters}

@@ -12,6 +12,8 @@ import { useDungeonDoors } from "./dungeon-use-doors";
 import { useDungeonVisibleMonsters } from "./dungeon-use-visible-monsters";
 import { furnitureFlipStyle, doorPlaceholderStyleFromFilename } from "./furniture-flip";
 
+const MONSTER_ATTACK_CURSOR = "url('/img/cursors/attack.svg') 16 16, crosshair";
+
 export default function DungeonBoard({
   gameSession,
   boardVisibilityMap,
@@ -24,7 +26,9 @@ export default function DungeonBoard({
   treasures = [],
   triggeredTraps = [],
   targetingSpell = null,
-  visibilityCalc
+  targetingItem = null,
+  visibilityCalc,
+  canAttackMonsterAt
 }) {
   const [hoveredCell, setHoveredCell] = useState(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -106,6 +110,45 @@ export default function DungeonBoard({
     }
     return "cursor-default";
   }, [targetingSpell]);
+
+  const getMonsterCursorStyle = useCallback(
+    (m) => {
+      if (targetingItem) {
+        return { cursor: "crosshair" };
+      }
+      if (targetingSpell) {
+        const isMonsterSpell =
+          targetingSpell.targetType === "Monster" || targetingSpell.effetto === "Genio";
+        if (!isMonsterSpell) {
+          return { cursor: "not-allowed" };
+        }
+        if (!activeHero) {
+          return { cursor: "not-allowed" };
+        }
+        const hasLos = visibilityCalc?.hasLineOfSight(
+          activeHero.x,
+          activeHero.y,
+          m.x,
+          m.y
+        );
+        return {
+          cursor: hasLos ? MONSTER_ATTACK_CURSOR : "not-allowed"
+        };
+      }
+      if (typeof canAttackMonsterAt === "function") {
+        try {
+          const ok = canAttackMonsterAt(m.id);
+          return {
+            cursor: ok ? MONSTER_ATTACK_CURSOR : "not-allowed"
+          };
+        } catch {
+          return { cursor: "pointer" };
+        }
+      }
+      return { cursor: "pointer" };
+    },
+    [targetingItem, targetingSpell, activeHero, visibilityCalc, canAttackMonsterAt]
+  );
 
   return (
     <div 
@@ -276,9 +319,6 @@ export default function DungeonBoard({
       <div className="absolute inset-0 pointer-events-none z-40">
         {/* Monsters */}
         {visibleMonsters?.map(m => {
-          const isTargeted = targetingSpell && (targetingSpell.targetType === "Monster" || targetingSpell.effetto === "Genio");
-          const cursorClass = isTargeted ? 'cursor-crosshair' : (targetingSpell ? 'cursor-default' : 'cursor-pointer');
-          
           let effectClass = "";
           let effectOverlay = null;
           if (m.activeStatus?.includes("Sleep")) {
@@ -297,8 +337,14 @@ export default function DungeonBoard({
           return (
             <div 
               key={`mon-${m.id}`}
-              className={`absolute ${cursorClass} pointer-events-auto`}
-              style={{ left: (m.x - 1) * 34, top: (m.y - 1) * 34, width: 34, height: 34 }}
+              className="absolute pointer-events-auto"
+              style={{
+                left: (m.x - 1) * 34,
+                top: (m.y - 1) * 34,
+                width: 34,
+                height: 34,
+                ...getMonsterCursorStyle(m)
+              }}
               onClick={() => onMonsterClick?.(m.id)}
               onMouseEnter={() => handleMonsterHover(m)}
               title={`${monsterName} - HP: ${hpDisplay} - Mind: ${mindDisplay}`}

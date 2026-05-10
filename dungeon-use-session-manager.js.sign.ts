@@ -2,6 +2,7 @@ export declare function useDungeonSessionManager(config: {
   gameSession: any;
   onUpdateSession: (updater: any) => void;
   onNotify: (message: string) => void;
+  onScriptBlockingDialog?: (messages: string[]) => void;
   fogOfWarLogic: any;
   staticEquipment: any[];
   staticItems: any[];

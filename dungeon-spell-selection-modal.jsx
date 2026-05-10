@@ -19,7 +19,11 @@ export default function DungeonSpellSelectionModal({
     const [currentHeroPicking, setCurrentHeroPicking] = useState(null);
 
     useEffect(() => {
-        if (!heroes || !Array.isArray(heroes)) return;
+        if (!heroes || !Array.isArray(heroes) || heroes.length === 0) {
+            setCurrentHeroPicking(null);
+            setPickedElements([]);
+            return;
+        }
 
         const wizard = heroes.find(h => h?.hero?.classe?.toLowerCase() === "mago");
         
@@ -90,7 +94,7 @@ export default function DungeonSpellSelectionModal({
         }
     }, [currentHeroPicking, pickedElements, heroes, allSpells, onConfirmSelection]);
 
-    if (!currentHeroPicking && heroes.length > 0) {
+    if (!heroes?.length || !currentHeroPicking) {
         return null;
     }
 

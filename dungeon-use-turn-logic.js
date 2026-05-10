@@ -169,8 +169,13 @@ export function useTurnLogic({
 
     let nextTurn = gameSession?.currentTurn || 1;
     let nextHero = null;
-    const maxTurn = gameSession?.heroes?.length || 0;
-    
+    const participatingHeroes =
+      gameSession?.heroes?.filter((h) => (h.turnOrder ?? 0) > 0) ?? [];
+    const maxTurn =
+      participatingHeroes.length > 0
+        ? participatingHeroes.length
+        : gameSession?.heroes?.length || 0;
+
     for (let i = 0; i < maxTurn; i++) {
       nextTurn++;
       nextHero = gameSession?.heroes?.find(h => h.turnOrder === nextTurn);
@@ -502,6 +507,56 @@ export function useTurnLogic({
     canMeleeAcrossCells
   ]);
 
+  /** Per cursore hover: stesse condizioni geometriche/tempo dell’attacco melee (senza script noatt). */
+  const canAttackMonsterAt = useCallback(
+    (monsterId) => {
+      const monster = gameSession?.monsters?.find((m) => m.id === monsterId);
+      const hero = gameSession?.heroes?.find(
+        (h) => h.turnOrder === gameSession.currentTurn
+      );
+      if (!monster || monster.currentBody <= 0 || !hero || hero.currentBody <= 0 || hero.isEscaped) {
+        return false;
+      }
+      if (isMoving || turnPhase.HasPerformedAction) return false;
+
+      const stats = heroStatsLogic.calculateStats(hero);
+      const dx = Math.abs(hero.x - monster.x);
+      const dy = Math.abs(hero.y - monster.y);
+      const dist = dx + dy;
+
+      let isValidTarget = false;
+      if (dist <= 1 && canMeleeAcrossCells(hero.x, hero.y, monster.x, monster.y)) {
+        isValidTarget = true;
+      } else if (dx === 1 && dy === 1 && stats.canAttackDiagonal) {
+        if (visibilityCalc?.hasLineOfSight(hero.x, hero.y, monster.x, monster.y)) {
+          isValidTarget = true;
+        }
+      } else if (stats.canAttackRanged) {
+        if (visibilityCalc?.hasLineOfSight(hero.x, hero.y, monster.x, monster.y)) {
+          isValidTarget = true;
+        }
+      }
+      if (!isValidTarget) return false;
+
+      const canDouble = heroStatsLogic.canAttackTwice(hero, monster.monster);
+      const quota = hero.bonusMeleeAttackQuota || 0;
+      const baseCap = canDouble ? 2 : 1;
+      const attackCap = quota > 0 ? Math.max(baseCap, quota) : baseCap;
+      if (attacksPerformed >= attackCap) return false;
+
+      return true;
+    },
+    [
+      gameSession,
+      isMoving,
+      turnPhase.HasPerformedAction,
+      heroStatsLogic,
+      visibilityCalc,
+      canMeleeAcrossCells,
+      attacksPerformed
+    ]
+  );
+
   const handleOpenDoor = useCallback(() => {
     if (canOpenDoor) {
       mapInteractionLogic?.openPassage?.(canOpenDoor.passageCell.x, canOpenDoor.passageCell.y, canOpenDoor.destination.x, canOpenDoor.destination.y);
@@ -727,6 +782,7 @@ export function useTurnLogic({
     handleBoardHover,
     handleBoardClick,
     handleMonsterClick,
+    canAttackMonsterAt,
     markActionDone,
     forceTurnExhausted,
     endTurn,
