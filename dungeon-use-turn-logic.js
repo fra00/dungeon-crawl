@@ -34,6 +34,8 @@ export function useTurnLogic({
   const [activePath, setActivePath] = useState([]);
 
   const previousActiveTurnKey = useRef(null);
+  const objectiveNotifyMissionKeyRef = useRef(null);
+  const previousObjectiveCompletedRef = useRef(false);
 
   // -----------------------------------------------------------------------
   // Watchdog: mantiene `canOpenDoor` SEMPRE sincronizzato con la posizione
@@ -114,6 +116,30 @@ export function useTurnLogic({
   }, [gameSession]);
 
   const isMissionObjectiveCompleted = useMemo(() => checkMissionObjective(), [checkMissionObjective]);
+  const missionKey = `${gameSession?.campaignName ?? ""}|${gameSession?.currentMissionIndex ?? "null"}`;
+  const hasMissionObjectiveConfigured = useMemo(() => {
+    const header = gameSession?.currentMap?.header;
+    if (!header) return false;
+    const bossObjectiveId = header.mostro_uscita >= 0 ? header.mostro_uscita : null;
+    const itemObjectiveId = header.oggetto_f > 0 ? header.oggetto_f : null;
+    const weaponObjectiveId = header.arma_f > 0 ? header.arma_f : null;
+    const t = header.tesoro_finale;
+    const hasTreasureObjective = !!(t && (t.x !== 0 || t.y !== 0));
+    return bossObjectiveId != null || !!itemObjectiveId || !!weaponObjectiveId || hasTreasureObjective;
+  }, [gameSession?.currentMap?.header]);
+
+  useEffect(() => {
+    if (objectiveNotifyMissionKeyRef.current !== missionKey) {
+      objectiveNotifyMissionKeyRef.current = missionKey;
+      previousObjectiveCompletedRef.current = isMissionObjectiveCompleted;
+      return;
+    }
+    const justCompleted = previousObjectiveCompletedRef.current === false && isMissionObjectiveCompleted === true;
+    if (justCompleted && hasMissionObjectiveConfigured) {
+      onNotify("Obiettivo missione completato! Raggiungi le scale per uscire.");
+    }
+    previousObjectiveCompletedRef.current = isMissionObjectiveCompleted;
+  }, [missionKey, isMissionObjectiveCompleted, hasMissionObjectiveConfigured, onNotify]);
 
   const canMeleeAcrossCells = useCallback((fromX, fromY, toX, toY) => {
     const fromCell = visibilityMap?.data?.find(c => c.x === fromX && c.y === fromY);
