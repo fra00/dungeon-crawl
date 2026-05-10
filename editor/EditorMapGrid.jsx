@@ -8,7 +8,7 @@ import {
   cellHasTreasureLoot,
   equipmentImageUrl,
 } from "./editor-map-visual.js";
-import { furnitureFlipStyle } from "../furniture-flip.js";
+import { furnitureFlipStyle, doorPlaceholderStyle } from "../furniture-flip.js";
 
 const CELL = EDITOR_CELL_PX;
 const BOARD_W = EDITOR_MAP_WIDTH * CELL;
@@ -153,8 +153,12 @@ export default function EditorMapGrid({
                 src={`/img/cell/${img}`}
                 alt="porta"
                 draggable={false}
-                className="absolute z-[5] w-[34px] h-[34px] object-contain pointer-events-none drop-shadow-md"
-                style={{ left: (d.x - 1) * CELL, top: (d.y - 1) * CELL }}
+                className="absolute z-[5] w-[34px] h-[34px] pointer-events-none drop-shadow-md"
+                style={{
+                  left: (d.x - 1) * CELL,
+                  top: (d.y - 1) * CELL,
+                  ...doorPlaceholderStyle(d.oriz),
+                }}
               />
               {/* Indicatore direzionale: una sola freccia sul lato +1 gestito */}
               <div

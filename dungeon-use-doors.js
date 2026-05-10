@@ -8,17 +8,10 @@
 
 import { useMemo, useRef } from 'react';
 import { getDoorGatedNeighbor } from './dungeon-door-rules.js';
-import { normalizeValo, isCorridorValo } from './dungeon-visibility-calc-core.js';
 
 export const useDungeonDoors = ({ gameSession, boardVisibilityMap }) => {
-  /** Chiavi `"x,y"` delle porte già mostrate almeno una volta su questa mappa (non si toglie al cambio turno / eroe). */
+  /** Chiavi `"x,y"` delle porte già rivelate almeno una volta in questa missione. */
   const stickyVisibleDoorKeysRef = useRef(new Set());
-  // Fingerprint stabile della "partita + missione corrente": NON usiamo
-  // `currentMap` per riferimento perché `moveCurrentHeroInSession` fa
-  // `JSON.parse(JSON.stringify(session))`, e quindi `currentMap` cambia ref
-  // ad ogni step, ma logicamente è sempre la stessa mappa.
-  // `campaignName` e `currentMissionIndex` sono primitivi, sopravvivono al
-  // deep-clone e cambiano solo al caricamento di una mappa diversa.
   const fingerprint = `${gameSession?.campaignName ?? ''}|${gameSession?.currentMissionIndex ?? 'null'}`;
   const prevFingerprintRef = useRef(fingerprint);
   if (prevFingerprintRef.current !== fingerprint) {
@@ -31,71 +24,30 @@ export const useDungeonDoors = ({ gameSession, boardVisibilityMap }) => {
       return [];
     }
 
-    const hero = gameSession.heroes?.find((h) => h.turnOrder === gameSession.currentTurn);
-    const heroVis =
-      hero && boardVisibilityMap.data.find((cell) => cell.x === hero.x && cell.y === hero.y);
-    const heroRoomValo =
-      heroVis && !isCorridorValo(heroVis.valo) ? normalizeValo(heroVis.valo) : null;
-
+    const openedDoors = new Set(gameSession.openedDoors || []);
     const result = [];
-    const openedDoors = gameSession.openedDoors || [];
-
-    gameSession.currentMap.porte.forEach((door) => {
+    for (const door of gameSession.currentMap.porte) {
       const x = parseInt(door.x, 10);
       const y = parseInt(door.y, 10);
       const doorCoordKey = `${x},${y}`;
       const gated = getDoorGatedNeighbor({ x, y, oriz: door.oriz });
-      let isVisibleNow = false;
 
-      if (openedDoors.includes(doorCoordKey)) {
-        isVisibleNow = true;
-      }
+      const justRevealedNow =
+        boardVisibilityMap.data.some((c) => c.x === x && c.y === y && c.fog === false) ||
+        (gated != null &&
+          boardVisibilityMap.data.some((c) => c.x === gated.x && c.y === gated.y && c.fog === false));
 
-      if (!isVisibleNow) {
-        // Solo cella porta + vicino gatato +1 (stessa convenzione di movimento / editor).
-        // La vecchia logica simmetrica (±1) mostrava porte di altre stanze se il lato -1
-        // era nella stanza corrente senza nebbia.
-        const cellsToCheck = [{ x, y }];
-        if (gated) cellsToCheck.push(gated);
-
-        for (const coord of cellsToCheck) {
-          const visCell = boardVisibilityMap.data.find(
-            (cell) => cell.x === coord.x && cell.y === coord.y
-          );
-
-          if (visCell && visCell.fog === false) {
-            isVisibleNow = true;
-            break;
-          }
-        }
-
-        // Eroe in una stanza (valo numerico ≠ corridoio): mostra solo porte che toccano
-        // quel valo (cella porta o destinazione +1), così non compare la porta del valo 13
-        // quando sei nel 10 salvo che una delle due celle sia davvero stanza 10.
-        if (isVisibleNow && heroRoomValo != null) {
-          const doorVis = boardVisibilityMap.data.find((c) => c.x === x && c.y === y);
-          const gatedVis = gated
-            ? boardVisibilityMap.data.find((c) => c.x === gated.x && c.y === gated.y)
-            : null;
-          const doorV = doorVis ? normalizeValo(doorVis.valo) : null;
-          const gatedV = gatedVis ? normalizeValo(gatedVis.valo) : null;
-          const touchesHeroRoom = doorV === heroRoomValo || gatedV === heroRoomValo;
-          if (!touchesHeroRoom) {
-            isVisibleNow = false;
-          }
-        }
-      }
-
-      if (isVisibleNow) {
+      if (justRevealedNow || openedDoors.has(doorCoordKey)) {
         stickyVisibleDoorKeysRef.current.add(doorCoordKey);
       }
+      if (!stickyVisibleDoorKeysRef.current.has(doorCoordKey)) continue;
 
-      if (stickyVisibleDoorKeysRef.current.has(doorCoordKey)) {
-        const img = door.oriz ? 'portao.png' : 'portav.png';
-        result.push({ x, y, img });
-      }
-    });
-
+      const isOpen = openedDoors.has(doorCoordKey);
+      const img = isOpen
+        ? (door.oriz ? 'portav.png' : 'portao.png')
+        : (door.oriz ? 'portao.png' : 'portav.png');
+      result.push({ x, y, img });
+    }
     return result;
   }, [gameSession, boardVisibilityMap]);
 

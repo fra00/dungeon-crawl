@@ -10,7 +10,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useDungeonFurniture } from "./dungeon-use-furniture";
 import { useDungeonDoors } from "./dungeon-use-doors";
 import { useDungeonVisibleMonsters } from "./dungeon-use-visible-monsters";
-import { furnitureFlipStyle } from "./furniture-flip";
+import { furnitureFlipStyle, doorPlaceholderStyleFromFilename } from "./furniture-flip";
 
 export default function DungeonBoard({
   gameSession,
@@ -209,6 +209,21 @@ export default function DungeonBoard({
 
       {/* Entities Layer */}
       <div className="absolute inset-0 pointer-events-none z-30">
+        {/* Doors Above Fog Layer */}
+        {visibleDoors?.map((d, i) => (
+          <img
+            key={`door-${i}`}
+            src={`/img/cell/${d.img}`}
+            className="absolute h-[34px] w-[34px] drop-shadow-md pointer-events-none"
+            style={{
+              left: (d.x - 1) * 34,
+              top: (d.y - 1) * 34,
+              ...doorPlaceholderStyleFromFilename(d.img),
+            }}
+            alt="Door"
+          />
+        ))}
+
         {/* Furniture */}
         {visibleFurniture?.map((f, i) => (
           <img
@@ -218,11 +233,6 @@ export default function DungeonBoard({
             style={{ left: (f.x - 1) * 34, top: (f.y - 1) * 34, ...furnitureFlipStyle(f.flpo, f.flpv) }}
             alt="Furniture"
           />
-        ))}
-
-        {/* Doors */}
-        {visibleDoors?.map((d, i) => (
-          <img key={`door-${i}`} src={`/img/cell/${d.img}`} className="absolute drop-shadow-md" style={{ left: (d.x - 1) * 34, top: (d.y - 1) * 34 }} alt="Door" />
         ))}
 
         {/* Secret Passages */}

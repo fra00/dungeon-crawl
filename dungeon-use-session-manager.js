@@ -147,12 +147,19 @@ export function useDungeonSessionManager({
     if (gameSession.openedDoors?.includes(coordKey)) return false;
 
     try {
+      let revealedCells = [];
       if (fogOfWarLogic?.revealFromPoint) {
-        fogOfWarLogic.revealFromPoint(destinationX, destinationY);
+        // `revealFromPoint` ritorna subito le celle rese visibili; usare questo
+        // risultato evita race con `fogVisibilityMap` (setState async).
+        revealedCells = fogOfWarLogic.revealFromPoint(destinationX, destinationY) || [];
       }
 
+      const isDestinationVisibleNow = revealedCells.some(
+        (c) => c.x === destinationX && c.y === destinationY
+      );
       const revealedCell = fogOfWarLogic?.fogVisibilityMap?.data?.find(c => c.x === destinationX && c.y === destinationY);
-      if (revealedCell == null || revealedCell.fog === true) {
+      const isDestinationVisibleFromState = revealedCell != null && revealedCell.fog !== true;
+      if (!isDestinationVisibleNow && !isDestinationVisibleFromState) {
         if (onNotify) onNotify("Impossibile aprire la porta da questa posizione.");
         return false;
       }

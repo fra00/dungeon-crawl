@@ -24,3 +24,19 @@ export function furnitureFlipStyle(flpo, flpv) {
   const t = furnitureFlipTransform(flpo, flpv);
   return t ? { transform: t } : {};
 }
+
+/**
+ * Sprite porta in cella fissa (34×34): il PNG è più piccolo della cella;
+ * ancoriamo al tabellone — orizzontali (`portao`) in basso, verticali (`portav`) a destra.
+ */
+export function doorPlaceholderStyle(oriz) {
+  return {
+    objectFit: "contain",
+    objectPosition: oriz ? "center bottom" : "right center",
+  };
+}
+
+/** Per il runtime dove abbiamo solo il nome file (`dungeon-use-doors`). */
+export function doorPlaceholderStyleFromFilename(img) {
+  return doorPlaceholderStyle(img === "portao.png");
+}

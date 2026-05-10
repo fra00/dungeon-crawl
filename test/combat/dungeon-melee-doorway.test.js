@@ -24,7 +24,7 @@ describe("cellIsOpenDoorTile", () => {
   });
 });
 
-describe("mergeOpenedDoorsAfterStep (apre solo quando si lascia la cella della porta)", () => {
+describe("mergeOpenedDoorsAfterStep (apre quando si lascia la cella porta)", () => {
   it("arrivare SU una porta NON la apre (atTo solo): l'eroe può ancora cliccare 'Apri porta'", () => {
     const s0 = {
       currentMap: { porte: [{ x: 6, y: 5, oriz: true }] },
@@ -36,14 +36,34 @@ describe("mergeOpenedDoorsAfterStep (apre solo quando si lascia la cella della p
     expect(s1.openedDoors).toEqual([]);
   });
 
-  it("lasciare una porta (atFrom) la apre", () => {
+  it("attraversare una porta oriz=true sul lato gestito (y+1) la apre", () => {
     const s0 = {
       currentMap: { porte: [{ x: 6, y: 5, oriz: true }] },
       openedDoors: [],
     };
-    // Step (6,5) → (7,5): atFrom=true (sto lasciando la porta).
+    // Geometria oriz=true: segmento gestito (6,5) <-> (6,6).
+    const s1 = mergeOpenedDoorsAfterStep(s0, 6, 5, 6, 6);
+    expect(s1.openedDoors).toEqual(["6,5"]);
+  });
+
+  it("lasciare la porta verso un lato non gestito la apre comunque (attraversamento inverso)", () => {
+    const s0 = {
+      currentMap: { porte: [{ x: 6, y: 5, oriz: true }] },
+      openedDoors: [],
+    };
+    // (6,5) -> (7,5): uscita dalla cella porta, va marcata aperta.
     const s1 = mergeOpenedDoorsAfterStep(s0, 6, 5, 7, 5);
     expect(s1.openedDoors).toEqual(["6,5"]);
+  });
+
+  it("arrivare dal vicino +1 sulla cella porta NON la apre", () => {
+    const s0 = {
+      currentMap: { porte: [{ x: 6, y: 5, oriz: true }] },
+      openedDoors: [],
+    };
+    // (6,6) -> (6,5): arrivo sulla porta, non attraversamento in uscita.
+    const s1 = mergeOpenedDoorsAfterStep(s0, 6, 6, 6, 5);
+    expect(s1.openedDoors).toEqual([]);
   });
 
   it("step lontano da qualunque porta non cambia openedDoors", () => {
@@ -55,7 +75,7 @@ describe("mergeOpenedDoorsAfterStep (apre solo quando si lascia la cella della p
     expect(s1.openedDoors).toEqual([]);
   });
 
-  it("flusso reale: arrivo sulla porta (chiusa) → lascio la porta (aperta)", () => {
+  it("flusso reale: arrivo sulla porta (chiusa) -> attraversamento (aperta)", () => {
     let s = {
       currentMap: { porte: [{ x: 6, y: 5, oriz: true }] },
       openedDoors: [],
@@ -63,8 +83,8 @@ describe("mergeOpenedDoorsAfterStep (apre solo quando si lascia la cella della p
     // Step 1: arrivo sulla porta. Resta chiusa.
     s = mergeOpenedDoorsAfterStep(s, 5, 5, 6, 5);
     expect(s.openedDoors).toEqual([]);
-    // Step 2: lascio la porta. Si apre.
-    s = mergeOpenedDoorsAfterStep(s, 6, 5, 7, 5);
+    // Step 2: la attraverso sul lato gestito. Si apre.
+    s = mergeOpenedDoorsAfterStep(s, 6, 5, 6, 6);
     expect(s.openedDoors).toEqual(["6,5"]);
   });
 
@@ -73,7 +93,7 @@ describe("mergeOpenedDoorsAfterStep (apre solo quando si lascia la cella della p
       currentMap: { porte: [{ x: 6, y: 5, oriz: true }] },
       openedDoors: ["6,5"],
     };
-    const s1 = mergeOpenedDoorsAfterStep(s0, 6, 5, 7, 5);
+    const s1 = mergeOpenedDoorsAfterStep(s0, 6, 5, 6, 6);
     expect(s1.openedDoors).toEqual(["6,5"]);
   });
 

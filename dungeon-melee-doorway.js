@@ -14,10 +14,8 @@ export function cellIsOpenDoorTile(gameSession, x, y) {
 }
 
 /**
- * Marks a door as opened when a figure LEAVES its cell (`atFrom`). Arriving on
- * a door cell (`atTo`) does NOT auto-open it — the figure is on the door but
- * has not yet "crossed" it, and the player should be able to use the
- * "Apri porta" button (or any other explicit action).
+ * Marks a door as opened when a figure LEAVES the door cell.
+ * Arriving on a door cell does NOT auto-open it.
  *
  * Esempio (porta a (5,2), oriz=false → gata `(5,2) ↔ (6,2)`):
  *   - Step (4,2) → (5,2): atFrom=false, atTo=true.
@@ -39,8 +37,8 @@ export function mergeOpenedDoorsAfterStep(session, fromX, fromY, toX, toY) {
   for (const p of porte) {
     const px = Number(p.x);
     const py = Number(p.y);
-    const atFrom = px === Number(fromX) && py === Number(fromY);
-    if (atFrom) {
+    const leftDoorCell = px === Number(fromX) && py === Number(fromY);
+    if (leftDoorCell) {
       const k = `${px},${py}`;
       if (!keys.has(k)) {
         keys.add(k);
