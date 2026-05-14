@@ -4,7 +4,7 @@
  * Verifica che gli script vengano triggerati correttamente dai vari
  * eventi del turno (movimento, attacco, cambio stanza) e che gli effects
  * runtime arrivino al consumer:
- *   - eventType 1 (passaggio per cella): script chiamato con previousPosition
+ *   - eventType 1 (passaggio per cella): script match su newPosition (cella di arrivo)
  *   - eventType 2 pre-attacco: script con `noatt` blocca l'attacco
  *   - eventType 8 (cambio stanza): chiamato solo quando valo cambia
  *   - effects.movementDelta / stopMovement / forceFinishTurn applicati
@@ -114,7 +114,7 @@ describe("useTurnLogic — integrazione con executeMissionScripts", () => {
     vi.restoreAllMocks();
   });
 
-  it("evento 1: chiamato per ogni step con previousPosition corretta", () => {
+  it("evento 1: chiamato per ogni step con previousPosition e newPosition nel context", () => {
     const calls = [];
     const config = buildConfig({
       heroAt: { x: 5, y: 5 },

@@ -109,8 +109,8 @@ describe("executeDungeonScripts", () => {
     expect(r.notifications).toEqual([]);
   });
 
-  describe("evento 1 — posizione precedente", () => {
-    it("esegue solo se (x,y) dello script coincide con previousPosition", () => {
+  describe("evento 1 — cella di arrivo", () => {
+    it("esegue solo se (x,y) dello script coincide con newPosition", () => {
       const session = sessionWithScripts([
         { x: 5, y: 6, evento: 1, text: "msg da 5,6;" },
         { x: 9, y: 9, evento: 1, text: "msg no;" },
@@ -118,7 +118,7 @@ describe("executeDungeonScripts", () => {
       const r = executeDungeonScripts({
         session,
         eventType: 1,
-        context: { previousPosition: { x: 5, y: 6 } },
+        context: { newPosition: { x: 5, y: 6 } },
       });
       expect(r.handled).toBe(true);
       expect(r.notifications).toEqual(["da 5,6"]);

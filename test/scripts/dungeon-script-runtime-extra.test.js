@@ -296,7 +296,7 @@ describe("Robustezza: input mancanti / malformati", () => {
     expect(r.handled).toBe(false);
   });
 
-  it("evento 1 senza previousPosition non crasha (no match)", () => {
+  it("evento 1 senza newPosition non crasha (no match)", () => {
     const session = makeSession([
       { x: 5, y: 5, evento: 1, text: "msg test;" },
     ]);

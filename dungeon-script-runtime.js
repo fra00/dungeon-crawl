@@ -146,7 +146,8 @@ const parseScript = (text) => {
 const checkEventMatchingRules = (script, eventType, context, visibilityMap, activeHero, grid) => {
   const ev = Number(eventType);
   if (ev === 1) {
-    return script.x === context?.previousPosition?.x && script.y === context?.previousPosition?.y;
+    // Destinazione del passo: lo script su (x,y) scatta quando l'eroe entra in quella cella.
+    return script.x === context?.newPosition?.x && script.y === context?.newPosition?.y;
   }
   if (ev === 2) {
     return script.idmosc === context?.monsterTypeId && Boolean(script.morto) === Boolean(context?.onDeath);

@@ -167,24 +167,24 @@ describe("useDungeonSessionManager.executeMissionScripts (integration)", () => {
     expect(r.notifications).toContain("da_baseSession");
   });
 
-  it("evento 1: previousPosition propagato al runtime", () => {
+  it("evento 1: newPosition propagata al runtime (match su cella di arrivo)", () => {
     const { result, onNotify } = buildHook([
-      { x: 5, y: 6, evento: 1, text: "msg passato_da_5_6;" },
+      { x: 5, y: 6, evento: 1, text: "msg entrato_in_5_6;" },
     ]);
 
     act(() => {
       result.current.executeMissionScripts({
         eventType: 1,
-        context: { previousPosition: { x: 5, y: 6 } },
+        context: { newPosition: { x: 5, y: 6 } },
       });
     });
-    expect(onNotify).toHaveBeenCalledWith("passato_da_5_6");
+    expect(onNotify).toHaveBeenCalledWith("entrato_in_5_6");
 
     onNotify.mockClear();
     act(() => {
       result.current.executeMissionScripts({
         eventType: 1,
-        context: { previousPosition: { x: 9, y: 9 } }, // posizione diversa
+        context: { newPosition: { x: 9, y: 9 } }, // posizione diversa
       });
     });
     expect(onNotify).not.toHaveBeenCalled();

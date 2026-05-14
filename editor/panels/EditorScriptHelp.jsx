@@ -5,8 +5,8 @@ const EVENTS = [
     id: 1,
     name: "Movimento eroe",
     desc:
-      "Si attiva quando l'eroe attivo entra nella casella (x,y) dello script (matching su posizione precedente del movimento).",
-    context: "previousPosition",
+      "Si attiva quando l'eroe attivo entra nella casella (x,y) dello script (destinazione del passo di movimento).",
+    context: "newPosition",
   },
   {
     id: 2,
