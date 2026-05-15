@@ -6,7 +6,7 @@
  * Edit the ISL file instead.
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useDungeonFurniture } from "./dungeon-use-furniture";
 import { useDungeonDoors } from "./dungeon-use-doors";
 import { useDungeonVisibleMonsters } from "./dungeon-use-visible-monsters";
@@ -20,6 +20,45 @@ import {
 } from "./dungeon-board-constants.js";
 
 const MONSTER_ATTACK_CURSOR = "url('/img/cursors/attack.svg') 16 16, crosshair";
+
+function rosterSignature(session) {
+  if (!session?.currentMap) return "";
+  const hid = (session.heroes || [])
+    .map((h) => String(h.heroId))
+    .sort()
+    .join(",");
+  const mid = (session.monsters || [])
+    .map((m) => String(m.id))
+    .sort()
+    .join(",");
+  const g0 = session.currentMap.grid?.[0];
+  return [hid, mid, g0?.x ?? "", g0?.y ?? "", (session.heroes || []).length, (session.monsters || []).length].join(
+    "|"
+  );
+}
+
+function buildVitalsSnapshot(session) {
+  if (!session) return null;
+  const heroes = new Map();
+  for (const h of session.heroes || []) {
+    heroes.set(String(h.heroId), {
+      body: h.currentBody ?? 0,
+      mind: h.currentMind ?? 0,
+      x: h.x,
+      y: h.y,
+    });
+  }
+  const monsters = new Map();
+  for (const m of session.monsters || []) {
+    monsters.set(String(m.id), {
+      body: m.currentBody ?? 0,
+      mind: m.currentMind ?? 0,
+      x: m.x,
+      y: m.y,
+    });
+  }
+  return { heroes, monsters };
+}
 
 export default function DungeonBoard({
   gameSession,
@@ -39,6 +78,10 @@ export default function DungeonBoard({
 }) {
   const [hoveredCell, setHoveredCell] = useState(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [floatingNumbers, setFloatingNumbers] = useState([]);
+  const prevRosterSigRef = useRef("");
+  const prevVitalsRef = useRef(null);
+  const floatSeqRef = useRef(0);
 
   const { visibleFurniture } = useDungeonFurniture({ gameSession, boardVisibilityMap });
   const { visibleDoors } = useDungeonDoors({ gameSession, boardVisibilityMap });
@@ -68,6 +111,56 @@ export default function DungeonBoard({
     const key = `${x},${y}`;
     return visibilityLookup.has(key) ? visibilityLookup.get(key) : true;
   }, [visibilityLookup]);
+
+  useEffect(() => {
+    if (!gameSession) return;
+    const sig = rosterSignature(gameSession);
+    const nextSnap = buildVitalsSnapshot(gameSession);
+    if (prevRosterSigRef.current !== sig) {
+      prevRosterSigRef.current = sig;
+      prevVitalsRef.current = nextSnap;
+      setFloatingNumbers([]);
+      return;
+    }
+    const prevSnap = prevVitalsRef.current;
+    prevVitalsRef.current = nextSnap;
+    if (!prevSnap) return;
+
+    const pending = [];
+
+    const pushFloat = (x, y, stat, delta) => {
+      if (delta === 0 || x == null || y == null) return;
+      if (isFogged(x, y)) return;
+      floatSeqRef.current += 1;
+      const key = `f-${floatSeqRef.current}`;
+      const heal = delta > 0;
+      const text = heal ? `+${delta}` : `${delta}`;
+      const kind = heal ? "heal" : "dmg";
+      pending.push({ key, x, y, text, stat, kind });
+    };
+
+    for (const [id, cur] of nextSnap.heroes) {
+      const old = prevSnap.heroes.get(id);
+      if (!old) continue;
+      pushFloat(cur.x, cur.y, "body", cur.body - old.body);
+      pushFloat(cur.x, cur.y, "mind", cur.mind - old.mind);
+    }
+
+    for (const [id, cur] of nextSnap.monsters) {
+      const old = prevSnap.monsters.get(id);
+      if (!old) continue;
+      pushFloat(cur.x, cur.y, "body", cur.body - old.body);
+      pushFloat(cur.x, cur.y, "mind", cur.mind - old.mind);
+    }
+
+    if (pending.length === 0) return;
+    setFloatingNumbers((prev) => [...prev, ...pending]);
+    pending.forEach((p) => {
+      window.setTimeout(() => {
+        setFloatingNumbers((prev) => prev.filter((f) => f.key !== p.key));
+      }, 1300);
+    });
+  }, [gameSession, isFogged]);
 
   const handleCellClick = useCallback((x, y) => {
     onCellClick?.(x + 1, y + 1);
@@ -224,6 +317,29 @@ export default function DungeonBoard({
               transform: none;
               filter: none;
             }
+            .dungeon-board-fog-overlay {
+              transition: none !important;
+            }
+            .dungeon-board-float-number {
+              animation: none !important;
+              opacity: 1;
+              transform: translate(-50%, -10px) scale(1);
+            }
+          }
+          @keyframes dungeon-float-rise {
+            0% { opacity: 0; transform: translate(-50%, 10px) scale(0.82); }
+            15% { opacity: 1; transform: translate(-50%, -2px) scale(1.08); }
+            100% { opacity: 0; transform: translate(-50%, -40px) scale(1); }
+          }
+          .dungeon-board-float-number {
+            animation: dungeon-float-rise 1.12s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+            pointer-events: none;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95), 0 0 10px rgba(0, 0, 0, 0.6);
+            font-weight: 800;
+            font-size: 13px;
+            line-height: 1;
+            white-space: nowrap;
+            z-index: 1;
           }
         `}
       </style>
@@ -286,7 +402,10 @@ export default function DungeonBoard({
               onClick={() => handleCellClick(cell.x, cell.y)}
               onMouseEnter={() => handleCellHover(cell.x, cell.y)}
             >
-              {fog && <div className="absolute inset-0 bg-black" />}
+              <div
+                className="dungeon-board-fog-overlay absolute inset-0 bg-black pointer-events-none transition-opacity duration-300 ease-out"
+                style={{ opacity: fog ? 1 : 0 }}
+              />
               {highlightClass && <div className={`absolute inset-0 ${highlightClass}`} />}
             </div>
           );
@@ -466,6 +585,29 @@ export default function DungeonBoard({
         })}
       </div>
 
+      {/* Floating damage / heal numbers */}
+      <div className="absolute inset-0 pointer-events-none z-[43]" aria-hidden>
+        {floatingNumbers.map((f) => {
+          const colorClass =
+            f.stat === "body"
+              ? f.kind === "heal"
+                ? "text-green-300"
+                : "text-red-200"
+              : f.kind === "heal"
+                ? "text-sky-300"
+                : "text-violet-300";
+          return (
+            <div
+              key={f.key}
+              className={`dungeon-board-float-number absolute ${colorClass}`}
+              style={{ left: (f.x - 1) * 34 + 17, top: (f.y - 1) * 34 }}
+            >
+              {f.text}
+            </div>
+          );
+        })}
+      </div>
+
       {/* Targeting Tracer */}
       {targetingSpell && hoveredCell && activeHero && (
         <svg className="absolute inset-0 w-full h-full pointer-events-none z-50">
@@ -498,9 +640,6 @@ export default function DungeonBoard({
           {gameSession.lastAttack.monster && (
             <div className="absolute w-[34px] h-[34px]" style={{ left: (gameSession.lastAttack.monster.x - 1) * 34, top: (gameSession.lastAttack.monster.y - 1) * 34 }}>
               <div className="absolute inset-0 rounded-full border-4 border-red-500 animate-ping" />
-              <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded shadow-lg animate-bounce whitespace-nowrap">
-                {gameSession.lastAttack.combatResult?.damage > 0 ? `-${gameSession.lastAttack.combatResult.damage} HP` : 'Parata'}
-              </div>
             </div>
           )}
         </div>

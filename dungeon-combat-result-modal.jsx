@@ -11,6 +11,7 @@ import { CombatDiceResult } from './dungeon-use-combat';
 
 export default function CombatResultModal({ isOpen, onClose, combatResult, attacker, defender }) {
   const [animationActive, setAnimationActive] = useState(false);
+  const [impactPhase, setImpactPhase] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -20,6 +21,22 @@ export default function CombatResultModal({ isOpen, onClose, combatResult, attac
       setAnimationActive(false);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !combatResult) {
+      setImpactPhase(false);
+      return;
+    }
+    setImpactPhase(false);
+    const atkLen = combatResult.attackerDice?.length ?? 0;
+    const defLen = combatResult.defenderDice?.length ?? 0;
+    const atkEnd = atkLen > 0 ? (atkLen - 1) * 100 + 520 : 0;
+    const defEnd = defLen > 0 ? (defLen - 1) * 100 + 520 : 0;
+    const lastStagger = Math.max(atkEnd, defEnd, 120);
+    const delay = 50 + lastStagger + 80;
+    const t = window.setTimeout(() => setImpactPhase(true), delay);
+    return () => clearTimeout(t);
+  }, [isOpen, combatResult]);
 
   if (!isOpen) return null;
 
@@ -84,6 +101,26 @@ export default function CombatResultModal({ isOpen, onClose, combatResult, attac
 
   return (
     <div className={overlayClass} role="dialog" aria-modal="true" aria-labelledby="combat-result-title">
+      <style>
+        {`
+          @keyframes combat-impact-title {
+            0% { transform: scale(1); filter: brightness(1); }
+            35% { transform: scale(1.06); filter: brightness(1.35); }
+            100% { transform: scale(1); filter: brightness(1); }
+          }
+          @keyframes combat-impact-damage {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.55); }
+            40% { transform: scale(1.08); box-shadow: 0 0 28px 6px rgba(220, 38, 38, 0.45); }
+            100% { transform: scale(1); box-shadow: 0 0 14px 2px rgba(220, 38, 38, 0.22); }
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .combat-impact-title-anim,
+            .combat-impact-damage-anim {
+              animation: none !important;
+            }
+          }
+        `}
+      </style>
       <div className={shellClass}>
         <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain relative">
           <div className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-red-900/40 to-transparent z-0 pointer-events-none" />
@@ -115,7 +152,9 @@ export default function CombatResultModal({ isOpen, onClose, combatResult, attac
             <div className="text-center">
               <h2
                 id="combat-result-title"
-                className="text-2xl sm:text-4xl font-black text-amber-500 tracking-wider uppercase drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]"
+                className={`text-2xl sm:text-4xl font-black text-amber-500 tracking-wider uppercase drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] combat-impact-title-anim ${
+                  impactPhase ? "animate-[combat-impact-title_0.55s_ease-out]" : ""
+                }`}
               >
                 {getTitle(combatResult.damageDealt)}
               </h2>
@@ -175,7 +214,11 @@ export default function CombatResultModal({ isOpen, onClose, combatResult, attac
         </div>
 
         <footer className="shrink-0 p-3 sm:p-4 border-t border-amber-900/40 bg-stone-950/95 flex flex-col items-center gap-3">
-          <div className="bg-red-950/80 border-2 border-red-700/50 rounded-full px-5 sm:px-8 py-2 sm:py-3 shadow-[0_0_20px_rgba(220,38,38,0.3)]">
+          <div
+            className={`bg-red-950/80 border-2 border-red-700/50 rounded-full px-5 sm:px-8 py-2 sm:py-3 shadow-[0_0_20px_rgba(220,38,38,0.3)] combat-impact-damage-anim ${
+              impactPhase ? "animate-[combat-impact-damage_0.65s_ease-out]" : ""
+            }`}
+          >
             <span className="text-lg sm:text-2xl font-bold text-red-100">
               Danni Inflitti:{' '}
               <span className="text-red-400 text-xl sm:text-3xl ml-1 sm:ml-2">

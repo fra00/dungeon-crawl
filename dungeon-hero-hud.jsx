@@ -16,6 +16,39 @@ function StatRow({ icon, label, value, valueColor = "text-stone-100" }) {
   );
 }
 
+/** Barra che anima il riempimento quando Sal/Men cambiano. */
+function StatBarRow({
+  icon,
+  label,
+  current,
+  maxBase,
+  valueColor = "text-stone-100",
+  barClass = "bg-stone-500",
+}) {
+  const max = Math.max(1, Number(maxBase) || 1);
+  const cur = Math.max(0, Number(current) || 0);
+  const pct = Math.min(100, (cur / max) * 100);
+  return (
+    <div className="flex flex-col items-center justify-center py-1 px-0.5 border-b border-stone-700/40 last:border-b-0 min-h-0 w-full">
+      <span className="text-sm leading-none" title={label}>
+        {icon}
+      </span>
+      <div className="w-full max-w-[2.4rem] sm:max-w-[2.85rem] mt-0.5 px-0.5">
+        <div className="h-1 sm:h-1.5 w-full rounded-full bg-stone-950/90 overflow-hidden border border-stone-700/45">
+          <div
+            className={`h-full rounded-full transition-[width] duration-500 ease-out motion-reduce:transition-none ${barClass}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      </div>
+      <span className={`text-xs sm:text-sm font-bold leading-tight mt-0.5 ${valueColor}`}>{cur}</span>
+      <span className="text-[8px] text-stone-500 uppercase tracking-tighter leading-none hidden sm:block">
+        {label}
+      </span>
+    </div>
+  );
+}
+
 /**
  * Colonna stats sempre visibile (stretto, mobile = desktop).
  */
@@ -29,6 +62,8 @@ export default function DungeonHeroHud({
   const defense = currentHeroStats?.difesa ?? currentHero.hero?.difesa ?? 0;
   const body = currentHero.currentBody ?? 0;
   const mind = currentHero.currentMind ?? 0;
+  const maxBody = currentHero.hero?.corpo ?? 1;
+  const maxMind = currentHero.hero?.mente ?? 1;
   const gold = currentHero.gold ?? 0;
   const activeEffects = Array.isArray(currentHero.activeStatus)
     ? currentHero.activeStatus
@@ -41,8 +76,22 @@ export default function DungeonHeroHud({
     >
       <StatRow icon="⚔️" label="Att" value={attack} />
       <StatRow icon="🛡️" label="Dif" value={defense} />
-      <StatRow icon="🧠" label="Men" value={mind} valueColor="text-blue-400" />
-      <StatRow icon="❤️" label="Sal" value={body} valueColor="text-red-400" />
+      <StatBarRow
+        icon="🧠"
+        label="Men"
+        current={mind}
+        maxBase={maxMind}
+        valueColor="text-blue-400"
+        barClass="bg-gradient-to-r from-indigo-600 to-blue-400"
+      />
+      <StatBarRow
+        icon="❤️"
+        label="Sal"
+        current={body}
+        maxBase={maxBody}
+        valueColor="text-red-400"
+        barClass="bg-gradient-to-r from-red-800 to-red-500"
+      />
       <StatRow icon="🪙" label="Oro" value={gold} valueColor="text-yellow-400" />
       {activeEffects.length > 0 && (
         <div className="p-0.5 flex flex-col gap-0.5 items-center">
