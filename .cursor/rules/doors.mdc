@@ -68,10 +68,11 @@ Una versione precedente provava una geometria simmetrica (gating su entrambi i v
 ## Stato della porta (apertura)
 
 `gameSession.openedDoors` è un array di chiavi `"x,y"` riferite alla **cella della porta**. Una porta diventa "aperta" quando:
-- L'eroe (o un mostro) **lascia** la cella della porta (`mergeOpenedDoorsAfterStep` con `atFrom`). Arrivare sulla cella **non** la apre: l'eroe sta sulla porta ma non l'ha ancora attraversata.
+- L'eroe **attraversa** la coppia direzionale gestita (`findDoorGatingPair` in `mergeOpenedDoorsAfterStep`), in qualsiasi direzione (porta↔vicino +1), indipendentemente dalla cella finale.
+- L'eroe **lascia** la cella della porta verso una direzione non gestita dalla geometria (uscita laterale).
 - Si esegue l'azione "Apri porta" (`openPassage` in [dungeon-use-session-manager.js](mdc:dungeon-use-session-manager.js)).
 
-Conseguenza UX: quando l'eroe arriva sulla cella di una porta chiusa, vede comparire il pulsante "Apri porta" (`isFrontOfDoor` ritorna un risultato valido). Se preme il pulsante, la porta entra in `openedDoors` e il pulsante sparisce. Se invece prosegue il movimento attraversando la porta, il commit `atFrom` la apre comunque.
+Arrivare sulla porta da una cella **non** sulla coppia gestita (es. lato -1) **non** la apre: resta disponibile il pulsante "Apri porta". Attraversare la coppia (cambio valo) la apre al passo del movimento, non solo quando si esce dalla casella porta.
 
 Una porta aperta resta walkable per la propria coppia direzionale.
 

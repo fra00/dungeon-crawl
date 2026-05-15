@@ -2,6 +2,59 @@
  * Partecipanti missione da `currentMap.eroi_start` e ripristino roster campagna a fine missione.
  */
 
+/** Stesso schema usato da play-game per una nuova campagna. */
+export function buildDefaultHeroParty(staticHeroes, staticEquipment) {
+  if (!staticHeroes?.length) return [];
+  return staticHeroes.map((hero) => {
+    let initialEquipmentIds = [];
+    if (hero.classe === "Barbaro") initialEquipmentIds = [13];
+    else if (hero.classe === "Nano") initialEquipmentIds = [2];
+    else if (hero.classe === "Elfo") initialEquipmentIds = [12];
+    else if (hero.classe === "Mago") initialEquipmentIds = [4];
+
+    const equippedIds = (staticEquipment || [])
+      .filter((e) => initialEquipmentIds.includes(e.id))
+      .map((e) => e.id);
+
+    return {
+      heroId: hero.id,
+      hero,
+      currentBody: hero.corpo,
+      currentMind: hero.mente,
+      gold: 0,
+      inventory: [],
+      equipment: equippedIds,
+      equipped: equippedIds,
+      availableSpells: [],
+      activeStatus: [],
+      isEscaped: false,
+      x: 0,
+      y: 0,
+      turnOrder: 0,
+    };
+  });
+}
+
+/**
+ * Allinea il salvataggio al catalogo (heroes.json): se in missione 1 c'era solo il Barbaro,
+ * a missione 2 gli spawn (es. Mago id 2) trovano comunque l'eroe nel roster.
+ */
+export function mergeCampaignRosterWithCatalog(savedHeroes, staticHeroes, staticEquipment) {
+  const defaults = buildDefaultHeroParty(staticHeroes, staticEquipment);
+  const byId = new Map(
+    (Array.isArray(savedHeroes) ? savedHeroes : []).map((h) => [Number(h.heroId), h])
+  );
+  return defaults.map((def) => {
+    const saved = byId.get(Number(def.heroId));
+    if (!saved) return def;
+    return {
+      ...def,
+      ...saved,
+      hero: saved.hero ?? def.hero,
+    };
+  });
+}
+
 /**
  * @param {Array<{ heroId: unknown }>} heroes
  * @param {{ eroi_start?: Array<{ id: unknown }> } | null | undefined} mapDoc

@@ -227,7 +227,7 @@ describe("End-to-end: arrivo sulla porta → pulsante 'Apri porta' visibile", ()
     expect(result.current.turnLogic.canOpenDoor).toBeNull();
   });
 
-  it("oriz=true: arrivo dal vicino +1 sulla porta → canOpenDoor visibile", () => {
+  it("oriz=true: attraversamento dal vicino +1 sulla porta → si apre subito", () => {
     // Door (5,10,oriz=true). Vicino +1 = (5,11). Hero starts at (5,11).
     const initial = {
       currentTurn: 1,
@@ -263,19 +263,14 @@ describe("End-to-end: arrivo sulla porta → pulsante 'Apri porta' visibile", ()
     act(() => result.current.turnLogic.handleBoardClick(5, 10));
     act(() => vi.advanceTimersByTime(350));
 
-    // Eroe ora sulla porta. Porta NON in openedDoors (atTo non apre).
     const hero = result.current.session.heroes.find((h) => h.turnOrder === 1);
     expect(hero.x).toBe(5);
     expect(hero.y).toBe(10);
-    expect(result.current.session.openedDoors).toEqual([]);
-
-    // canOpenDoor visibile, destinazione = vicino +1 (5,11).
-    expect(result.current.turnLogic.canOpenDoor).toBeTruthy();
-    expect(result.current.turnLogic.canOpenDoor.passageCell).toEqual({ x: 5, y: 10 });
-    expect(result.current.turnLogic.canOpenDoor.destination).toEqual({ x: 5, y: 11 });
+    expect(result.current.session.openedDoors).toEqual(["5,10"]);
+    expect(result.current.turnLogic.canOpenDoor).toBeNull();
   });
 
-  it("attraversamento completo (porta → vicino +1): la porta si apre alla partenza (atFrom)", () => {
+  it("attraversamento completo (porta → vicino +1): la porta si apre al passo", () => {
     const initial = makeInitialSession({
       heroAt: { x: 5, y: 2 },
       doorAt: { x: 5, y: 2, oriz: false },

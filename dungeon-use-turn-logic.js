@@ -272,26 +272,53 @@ export function useTurnLogic({
     }
   }, [gameSession, mapInteractionLogic]);
 
+  const computeMovementRoll = useCallback(
+    (hero) => {
+      if (!hero || hero.currentBody <= 0 || hero.isEscaped) return null;
+
+      const stats = heroStatsLogic.calculateStats(hero);
+      const bonusMoveDice = hero.bonusMovementDiceNextRoll || 0;
+      const diceCount = Math.max(1, stats.movimento || 2) + bonusMoveDice;
+
+      let roll = 0;
+      for (let i = 0; i < diceCount; i++) {
+        roll += Math.floor(Math.random() * 6) + 1;
+      }
+
+      return { roll, diceCount, bonusMoveDice, heroId: hero.heroId };
+    },
+    [heroStatsLogic]
+  );
+
+  const applyMovementRoll = useCallback(
+    (hero) => {
+      const result = computeMovementRoll(hero);
+      if (!result) {
+        setMovementPoints(null);
+        return null;
+      }
+
+      setMovementPoints(result.roll);
+
+      if (result.bonusMoveDice > 0) {
+        sessionManager.clearBonusMovementDiceForHero(result.heroId);
+        onNotify(
+          `Movimento: ${result.roll} PM (${result.diceCount} dadi, +${result.bonusMoveDice} dalla pozione).`
+        );
+      }
+
+      return result.roll;
+    },
+    [computeMovementRoll, sessionManager, onNotify]
+  );
+
+  /** @deprecated Tiro automatico a inizio turno; esposto per test e compatibilità. */
   const rollMovement = useCallback(() => {
-    const hero = gameSession?.heroes?.find(h => h.turnOrder === gameSession.currentTurn);
-    if (!hero || hero.currentBody <= 0 || hero.isEscaped) return;
-
-    const stats = heroStatsLogic.calculateStats(hero);
-    const bonusMoveDice = hero.bonusMovementDiceNextRoll || 0;
-    const diceCount = Math.max(1, stats.movimento || 2) + bonusMoveDice;
-
-    let roll = 0;
-    for (let i = 0; i < diceCount; i++) {
-      roll += Math.floor(Math.random() * 6) + 1;
-    }
-
-    setMovementPoints(roll);
-
-    if (bonusMoveDice > 0) {
-      sessionManager.clearBonusMovementDiceForHero(hero.heroId);
-      onNotify(`Movimento: ${diceCount} dadi (include +${bonusMoveDice} dalla pozione).`);
-    }
-  }, [gameSession, heroStatsLogic, sessionManager, onNotify]);
+    const hero = gameSession?.heroes?.find(
+      (h) => h.turnOrder === gameSession.currentTurn
+    );
+    applyMovementRoll(hero);
+  }, [gameSession, applyMovementRoll]);
 
   const handleBoardHover = useCallback((x, y) => {
     if (movementPoints == null || movementPoints <= 0 || isMoving) {
@@ -655,21 +682,30 @@ export function useTurnLogic({
     if (previousActiveTurnKey.current !== activeTurnKey) {
       pendingStairsExitConfirmedRef.current = false;
       setTurnPhase({ HasMoved: false, HasPerformedAction: false, IsTurnFinished: false });
-      setMovementPoints(null);
       setAttacksPerformed(0);
       setIsMoving(false);
       setIsMovingStarted(false);
       setActivePath([]);
       setHoveredPath([]);
       setHoveredPathVariant(null);
-      
+
       if (currentHero) {
-        setCanOpenDoor(mapInteractionLogic?.isFrontOfDoor?.(currentHero.x, currentHero.y, null) || null);
+        setCanOpenDoor(
+          mapInteractionLogic?.isFrontOfDoor?.(currentHero.x, currentHero.y, null) || null
+        );
+        applyMovementRoll(currentHero);
+      } else {
+        setMovementPoints(null);
       }
-      
+
       previousActiveTurnKey.current = activeTurnKey;
     }
-  }, [gameSession?.currentTurn, gameSession?.heroes, mapInteractionLogic]);
+  }, [
+    gameSession?.currentTurn,
+    gameSession?.heroes,
+    mapInteractionLogic,
+    applyMovementRoll,
+  ]);
 
   useEffect(() => {
     if (activePath.length < 2) {

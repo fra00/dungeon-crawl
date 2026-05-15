@@ -28,7 +28,7 @@ export default function CombatResultModal({ isOpen, onClose, combatResult, attac
   if (!combatResult) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-        <div className="relative w-[820px] h-[520px] bg-stone-900 rounded-2xl shadow-2xl border-4 border-amber-700/50 flex flex-col items-center justify-center p-8">
+        <div className="relative w-full max-w-[820px] max-h-[90vh] min-h-[280px] aspect-[820/520] bg-stone-900 rounded-2xl shadow-2xl border-4 border-amber-700/50 flex flex-col items-center justify-center p-4 sm:p-8 mx-2">
           <h2 className="text-3xl text-amber-500 font-bold mb-4 text-center">
             Rapporto di Combattimento Non Disponibile
           </h2>
@@ -76,7 +76,7 @@ export default function CombatResultModal({ isOpen, onClose, combatResult, attac
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-      <div className="relative w-[820px] h-[520px] bg-stone-900 rounded-2xl shadow-2xl border-4 border-amber-700/50 overflow-hidden flex flex-col items-center justify-between p-6">
+      <div className="relative w-full max-w-[820px] max-h-[90vh] min-h-[320px] aspect-[820/520] bg-stone-900 rounded-2xl shadow-2xl border-4 border-amber-700/50 overflow-hidden flex flex-col items-center justify-between p-4 sm:p-6 mx-2">
         
         {/* Background Flares */}
         <div className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-red-900/40 to-transparent z-0"></div>

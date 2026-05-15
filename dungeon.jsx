@@ -10,6 +10,10 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { PageNavigationEnum } from './domain-core';
 import { isEditorPlaytestActive, setEditorPlaytestActive } from './editor/editor-playtest-session.js';
 import DungeonBoard from './dungeon-board';
+import DungeonGameShell from './dungeon-game-shell.jsx';
+import DungeonActionBar from './dungeon-action-bar.jsx';
+import DungeonHeroHud from './dungeon-hero-hud.jsx';
+import DungeonTopBar from './dungeon-top-bar.jsx';
 import DungeonHeroOrder from './dungeon-hero-order';
 import { useTurnLogic } from './dungeon-use-turn-logic';
 import { usePathfinding } from './dungeon-use-pathfinding';
@@ -19,8 +23,6 @@ import { useFogOfWar } from './dungeon-use-fog-of-war';
 import { useVisibilityCalc } from './dungeon-use-visibility-calc';
 import { useDungeonMonsters } from './dungeon-use-monsters';
 import CombatResultModal from './dungeon-combat-result-modal';
-import DungeonTurnControls from './dungeon-turn-controls';
-import DungeonHeroInfoPanel from './dungeon-hero-info-panel';
 import { useSecretPassages } from './dungeon-use-secret-passages';
 import { useTreasureSearch } from './dungeon-use-treasure';
 import { useInventoryLogic } from './dungeon-use-inventory-logic';
@@ -593,18 +595,78 @@ export default function Dungeon({
         return hooksTraps.getTriggeredTraps().filter(t => t.status !== 'DISARMED');
     }, [hooksTraps]);
 
-    return (
-        <div className="w-full h-screen bg-transparent flex items-center justify-center relative overflow-hidden">
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-32 h-64 bg-orange-600/10 blur-3xl rounded-full pointer-events-none" />
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-32 h-64 bg-orange-600/10 blur-3xl rounded-full pointer-events-none" />
+    const showHeroHud =
+        gameSession?.isHeroOrderConfirmed &&
+        currentHero &&
+        currentHero.currentBody > 0;
 
-            <div className="relative p-4 bg-stone-900 border-4 border-amber-900/50 rounded-xl shadow-2xl">
+    const showActionBar = showHeroHud && !currentHero.isEscaped;
+
+    const heroClassKey = currentHero?.hero?.classe?.toLowerCase() || '';
+    const canUseMagic = ['mago', 'elfo'].includes(heroClassKey);
+    const turnPhase = hooksTurnLogic.turnPhase;
+    const magicDisabled =
+        turnPhase?.HasPerformedAction === true ||
+        hooksTurnLogic.isMoving ||
+        !!targetingSpell;
+
+    const actionBarProps = {
+        currentHero,
+        currentHeroStats,
+        movementPoints: hooksTurnLogic.movementPoints,
+        turnPhase,
+        canOpenDoor: !!hooksTurnLogic.canOpenDoor,
+        isTargeting: !!targetingSpell,
+        isMoving: hooksTurnLogic.isMoving,
+        onEndTurn: hooksTurnLogic.endTurn,
+        onSearchPassages: hooksSecretPassages.searchPassages,
+        onSearchTreasure: hooksTreasure.searchTreasure,
+        onSearchTraps: hooksTraps.searchTraps,
+        canDisarmTrap,
+        onDisarmTrap: handleDisarmTrap,
+        onOpenMagic: () => setIsSpellCastModalOpen(true),
+        onOpenInventory: () => setIsInventoryOpen(true),
+        onCancelTargeting: cancelTargeting,
+        onOpenDoor: hooksTurnLogic.handleOpenDoor,
+        audioMuted,
+        onToggleAudioMuted: toggleAudioMuted,
+        onExitMap: handleExitMapFromOptions,
+    };
+
+    return (
+        <DungeonGameShell
+            topBar={
+                showHeroHud ? (
+                    <DungeonTopBar
+                        currentHero={currentHero}
+                        movementPoints={hooksTurnLogic.movementPoints}
+                        currentTurn={gameSession?.currentTurn}
+                        canUseMagic={canUseMagic}
+                        magicDisabled={magicDisabled}
+                        onOpenInventory={() => setIsInventoryOpen(true)}
+                        onOpenMagic={() => setIsSpellCastModalOpen(true)}
+                        audioMuted={audioMuted}
+                        onToggleAudioMuted={toggleAudioMuted}
+                        onExitMap={handleExitMapFromOptions}
+                    />
+                ) : null
+            }
+            heroHud={
+                showHeroHud ? (
+                    <DungeonHeroHud
+                        currentHero={currentHero}
+                        currentHeroStats={currentHeroStats}
+                    />
+                ) : null
+            }
+            board={
+            <div className="relative p-1 sm:p-2 bg-stone-900 border-2 border-amber-900/50 rounded-lg shadow-2xl">
                 <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-amber-600 rounded-tl-lg pointer-events-none" />
                 <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-amber-600 rounded-tr-lg pointer-events-none" />
                 <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-amber-600 rounded-bl-lg pointer-events-none" />
                 <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-amber-600 rounded-br-lg pointer-events-none" />
 
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-6 py-1 bg-stone-800 border-2 border-amber-700 rounded text-amber-500 text-sm font-serif tracking-widest shadow-md pointer-events-none">
+                <div className="dungeon-chrome-label absolute -top-4 left-1/2 -translate-x-1/2 px-6 py-1 bg-stone-800 border-2 border-amber-700 rounded text-amber-500 text-sm font-serif tracking-widest shadow-md pointer-events-none">
                     DUNGEON
                 </div>
 
@@ -625,13 +687,11 @@ export default function Dungeon({
                     canAttackMonsterAt={hooksTurnLogic.canAttackMonsterAt}
                 />
 
-                {gameSession?.isHeroOrderConfirmed && (
-                    <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-stone-800 border-2 border-amber-700 rounded text-amber-500 text-xs font-serif tracking-widest shadow-md pointer-events-none">
-                        TURNO {gameSession.currentTurn}
-                    </div>
-                )}
             </div>
-
+            }
+            actions={showActionBar ? <DungeonActionBar {...actionBarProps} /> : null}
+            overlays={
+                <>
             {isMissionInitialized &&
                 !gameSession?.isHeroOrderConfirmed &&
                 (gameSession?.heroes?.length || 0) > 1 && (
@@ -648,40 +708,6 @@ export default function Dungeon({
                     heroes={spellSelectionHeroes}
                     allSpells={staticSpells}
                     onConfirmSelection={confirmSpellSelection}
-                />
-            )}
-
-            {gameSession?.isHeroOrderConfirmed && currentHero && currentHero.currentBody > 0 && !currentHero.isEscaped && (
-                <DungeonTurnControls
-                    currentHero={currentHero}
-                    currentHeroStats={currentHeroStats}
-                    movementPoints={hooksTurnLogic.movementPoints}
-                    turnPhase={hooksTurnLogic.turnPhase}
-                    canOpenDoor={!!hooksTurnLogic.canOpenDoor}
-                    isTargeting={!!targetingSpell}
-                    isMoving={hooksTurnLogic.isMoving}
-                    onRollMovement={hooksTurnLogic.rollMovement}
-                    onEndTurn={hooksTurnLogic.endTurn}
-                    onSearchPassages={hooksSecretPassages.searchPassages}
-                    onSearchTreasure={hooksTreasure.searchTreasure}
-                    onSearchTraps={hooksTraps.searchTraps}
-                    canDisarmTrap={canDisarmTrap}
-                    onDisarmTrap={handleDisarmTrap}
-                    onOpenMagic={() => setIsSpellCastModalOpen(true)}
-                    onOpenInventory={() => setIsInventoryOpen(true)}
-                    onCancelTargeting={cancelTargeting}
-                    onOpenDoor={hooksTurnLogic.handleOpenDoor}
-                    audioMuted={audioMuted}
-                    onToggleAudioMuted={toggleAudioMuted}
-                    onExitMap={handleExitMapFromOptions}
-                />
-            )}
-
-            {gameSession?.isHeroOrderConfirmed && currentHero && currentHero.currentBody > 0 && (
-                <DungeonHeroInfoPanel
-                    currentHero={currentHero}
-                    currentHeroStats={currentHeroStats}
-                    movementPoints={hooksTurnLogic.movementPoints}
                 />
             )}
 
@@ -754,6 +780,8 @@ export default function Dungeon({
                     onExit={handleGameOverExit}
                 />
             )}
-        </div>
+                </>
+            }
+        />
     );
 }

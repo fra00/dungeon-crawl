@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   sliceHeroesForMissionMap,
   mergeMissionHeroesIntoCampaignRoster,
+  mergeCampaignRosterWithCatalog,
   heroUsesMissionSpellSelection,
   missionHeroesNeedSpellSelection,
   filterHeroesForSpellSelection,
@@ -83,6 +84,24 @@ describe("heroUsesMissionSpellSelection / missionHeroesNeedSpellSelection", () =
     ]);
     expect(out).toHaveLength(1);
     expect(out[0].heroId).toBe(2);
+  });
+});
+
+describe("mergeCampaignRosterWithCatalog + sliceHeroesForMissionMap (campagna)", () => {
+  it("missione 2 con solo Barbaro salvato include anche il Mago negli spawn", () => {
+    const staticHeroes = [
+      { id: 0, classe: "Barbaro", corpo: 8, mente: 2 },
+      { id: 1, classe: "Nano", corpo: 6, mente: 3 },
+      { id: 2, classe: "Mago", corpo: 4, mente: 6 },
+    ];
+    const savedOnlyBarbaro = [
+      { heroId: 0, hero: staticHeroes[0], gold: 10, currentBody: 8, currentMind: 2 },
+    ];
+    const roster = mergeCampaignRosterWithCatalog(savedOnlyBarbaro, staticHeroes, []);
+    const mapDoc = { eroi_start: [{ id: 0 }, { id: 2 }] };
+    const { heroes } = sliceHeroesForMissionMap(roster, mapDoc);
+    expect(heroes.map((h) => h.heroId).sort()).toEqual([0, 2]);
+    expect(heroes.find((h) => h.heroId === 2).hero.classe).toBe("Mago");
   });
 });
 

@@ -9,7 +9,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { PageNavigationEnum } from "./domain-core";
 import { useCampaignManager } from "./dungeon-use-campaign-manager";
-import { sliceHeroesForMissionMap } from "./mission-party.js";
+import {
+  sliceHeroesForMissionMap,
+  mergeCampaignRosterWithCatalog,
+} from "./mission-party.js";
 
 export default function PlayGame({
   gameSession = null,
@@ -89,7 +92,7 @@ export default function PlayGame({
     if (index <= maxUnlockedMissionIndex && savedData != null) {
       const isReplayOfCompletedMission = index < savedData.nextMissionIndex;
       
-      const heroesForMission = savedData.heroes.map((h) => {
+      const heroesFromSave = savedData.heroes.map((h) => {
         if (isReplayOfCompletedMission) {
           return {
             ...h,
@@ -100,6 +103,12 @@ export default function PlayGame({
         return h;
       });
 
+      const rosterForMission = mergeCampaignRosterWithCatalog(
+        heroesFromSave,
+        staticHeroes,
+        staticEquipment
+      );
+
       const filename = campaign?.missioni?.[index]?.file;
       if (!filename) return;
 
@@ -108,7 +117,7 @@ export default function PlayGame({
         if (!response.ok) throw new Error("Failed to fetch map data");
         const mapData = await response.json();
         const { heroes: missionHeroes, preMissionHeroesBackup } = sliceHeroesForMissionMap(
-          heroesForMission,
+          rosterForMission,
           mapData
         );
 
@@ -138,7 +147,16 @@ export default function PlayGame({
         console.error("Error loading mission:", error);
       }
     }
-  }, [campaign, gameSession, loadCampaign, maxUnlockedMissionIndex, onChangePageView, onUpdateSession]);
+  }, [
+    campaign,
+    gameSession,
+    loadCampaign,
+    maxUnlockedMissionIndex,
+    onChangePageView,
+    onUpdateSession,
+    staticHeroes,
+    staticEquipment,
+  ]);
 
   // goBack
   const goBack = useCallback(() => {
@@ -163,10 +181,10 @@ export default function PlayGame({
   const focusedStatus = getMissionStatus(focusedMissionIndex);
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-transparent text-stone-300 font-serif selection:bg-amber-900/50">
+    <div className="flex flex-col md:flex-row h-full w-full min-h-0 overflow-hidden bg-transparent text-stone-300 font-serif selection:bg-amber-900/50">
       
       {/* Left Panel: Mission List */}
-      <div className="w-1/3 h-full overflow-y-auto overflow-x-hidden border-r border-amber-900/30 p-6 space-y-4 custom-scrollbar">
+      <div className="w-full md:w-1/3 max-h-[38vh] md:max-h-none md:h-full shrink-0 overflow-y-auto overflow-x-hidden border-b md:border-b-0 md:border-r border-amber-900/30 p-4 md:p-6 space-y-4 custom-scrollbar">
         <h2 className="text-3xl text-amber-500 mb-8 tracking-wider uppercase border-b border-amber-900/50 pb-4 text-center shadow-amber-900/20 drop-shadow-md">
           {campaign.nome_campagna || "Campagna"}
         </h2>
@@ -219,12 +237,12 @@ export default function PlayGame({
       </div>
 
       {/* Right Panel: Focused Mission Details */}
-      <div className="flex-1 h-full overflow-y-auto overflow-x-hidden p-10 flex flex-col items-center justify-center relative custom-scrollbar">
+      <div className="flex-1 min-h-0 h-full overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-10 flex flex-col items-center justify-center relative custom-scrollbar">
         
         {/* Atmospheric Background Elements */}
         <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-900/5 via-transparent to-transparent"></div>
         
-        <div className="max-w-2xl w-full flex flex-col items-center text-center space-y-8 z-10 bg-stone-950/40 p-12 border border-amber-900/20 rounded-sm backdrop-blur-sm shadow-2xl">
+        <div className="max-w-2xl w-full flex flex-col items-center text-center space-y-6 md:space-y-8 z-10 bg-stone-950/40 p-6 sm:p-8 md:p-12 border border-amber-900/20 rounded-sm backdrop-blur-sm shadow-2xl">
           
           <div className="space-y-4">
             <h4 className="text-amber-700/80 tracking-[0.3em] uppercase text-sm">

@@ -72,9 +72,9 @@ export default function DungeonNotification({ message, duration = 3000, onClose 
         }
       `}</style>
       
-      <div className="fixed top-6 left-1/2 z-[100] animate-slide-fade pointer-events-none">
+      <div className="fixed left-1/2 -translate-x-1/2 z-[100] animate-slide-fade pointer-events-none dungeon-notification-anchor max-w-[calc(100vw-1rem)] sm:max-w-lg">
         <div 
-          className={`relative flex items-center p-4 rounded-lg border-2 bg-stone-900/95 backdrop-blur-sm shadow-[0_0_20px_rgba(0,0,0,0.7)] min-w-[320px] max-w-lg ${tone.accentClass}`}
+          className={`relative flex items-center p-3 sm:p-4 rounded-lg border-2 bg-stone-900/95 backdrop-blur-sm shadow-[0_0_20px_rgba(0,0,0,0.7)] min-w-[min(320px,100%)] w-full ${tone.accentClass}`}
         >
           {/* Decorative Fantasy Corners */}
           <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-current opacity-60 rounded-tl-sm"></div>

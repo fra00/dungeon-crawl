@@ -24,7 +24,7 @@ describe("cellIsOpenDoorTile", () => {
   });
 });
 
-describe("mergeOpenedDoorsAfterStep (apre quando si lascia la cella porta)", () => {
+describe("mergeOpenedDoorsAfterStep (apre all'attraversamento della coppia gestita)", () => {
   it("arrivare SU una porta NON la apre (atTo solo): l'eroe può ancora cliccare 'Apri porta'", () => {
     const s0 = {
       currentMap: { porte: [{ x: 6, y: 5, oriz: true }] },
@@ -56,14 +56,13 @@ describe("mergeOpenedDoorsAfterStep (apre quando si lascia la cella porta)", () 
     expect(s1.openedDoors).toEqual(["6,5"]);
   });
 
-  it("arrivare dal vicino +1 sulla cella porta NON la apre", () => {
+  it("attraversare dal vicino +1 verso la cella porta apre subito (coppia gestita)", () => {
     const s0 = {
       currentMap: { porte: [{ x: 6, y: 5, oriz: true }] },
       openedDoors: [],
     };
-    // (6,6) -> (6,5): arrivo sulla porta, non attraversamento in uscita.
     const s1 = mergeOpenedDoorsAfterStep(s0, 6, 6, 6, 5);
-    expect(s1.openedDoors).toEqual([]);
+    expect(s1.openedDoors).toEqual(["6,5"]);
   });
 
   it("step lontano da qualunque porta non cambia openedDoors", () => {

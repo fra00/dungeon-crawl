@@ -12,8 +12,8 @@
  *        anche quando l'eroe ARRIVAVA su di essa (`atTo`). Di conseguenza
  *        `isFrontOfDoor` trovava la porta in `openedDoors` e la saltava.
  *
- * Fix: `mergeOpenedDoorsAfterStep` apre la porta SOLO al passo `atFrom`
- *      (cioè quando l'eroe LASCIA la cella della porta).
+ * Fix storico: non aprire su arrivi laterali non gestiti (es. (4,2)→(5,2)).
+ * Attraversamento della coppia gestita (es. (6,2)→(5,2)) apre subito la porta.
  */
 import { describe, it, expect, afterEach } from "vitest";
 import { renderHook, cleanup } from "@testing-library/react";
@@ -59,7 +59,16 @@ describe("Arrivo sulla cella di una porta: la porta resta chiusa", () => {
     expect(r.destination).toEqual({ x: 6, y: 2 });
   });
 
-  it("flusso completo: arrivo sulla porta (chiusa, button visibile) → lascio (aperta, button sparito)", () => {
+  it("attraversamento vicino → porta (coppia gestita): la porta si apre subito", () => {
+    const session0 = {
+      currentMap: { porte: [{ x: 5, y: 2, oriz: false }] },
+      openedDoors: [],
+    };
+    const session1 = mergeOpenedDoorsAfterStep(session0, 6, 2, 5, 2);
+    expect(session1.openedDoors).toEqual(["5,2"]);
+  });
+
+  it("flusso completo: arrivo laterale sulla porta (chiusa, button) → attraversa (aperta)", () => {
     // Step 1: arrivo. Porta resta chiusa.
     let session = {
       currentTurn: 1,

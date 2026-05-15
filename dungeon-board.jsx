@@ -11,6 +11,13 @@ import { useDungeonFurniture } from "./dungeon-use-furniture";
 import { useDungeonDoors } from "./dungeon-use-doors";
 import { useDungeonVisibleMonsters } from "./dungeon-use-visible-monsters";
 import { furnitureFlipStyle, doorPlaceholderStyleFromFilename } from "./furniture-flip";
+import {
+  DUNGEON_BOARD_COLS,
+  DUNGEON_BOARD_ROWS,
+  DUNGEON_CELL_SIZE,
+  DUNGEON_BOARD_WIDTH,
+  DUNGEON_BOARD_HEIGHT,
+} from "./dungeon-board-constants.js";
 
 const MONSTER_ATTACK_CURSOR = "url('/img/cursors/attack.svg') 16 16, crosshair";
 
@@ -95,8 +102,8 @@ export default function DungeonBoard({
 
   const gridCells = useMemo(() => {
     const cells = [];
-    for (let y = 0; y < 19; y++) {
-      for (let x = 0; x < 26; x++) {
+    for (let y = 0; y < DUNGEON_BOARD_ROWS; y++) {
+      for (let x = 0; x < DUNGEON_BOARD_COLS; x++) {
         cells.push({ x, y });
       }
     }
@@ -151,8 +158,9 @@ export default function DungeonBoard({
   );
 
   return (
-    <div 
-      className="relative w-[884px] h-[646px] overflow-hidden select-none"
+    <div
+      className="relative overflow-hidden select-none touch-manipulation"
+      style={{ width: DUNGEON_BOARD_WIDTH, height: DUNGEON_BOARD_HEIGHT }}
       onMouseLeave={handleMouseLeaveBoard}
     >
       <style>
@@ -181,7 +189,13 @@ export default function DungeonBoard({
       <div className="absolute inset-0 pointer-events-none z-[5] bg-[radial-gradient(circle_at_center,rgba(251,191,36,0.05)_0%,rgba(0,0,0,0.4)_100%)]" />
 
       {/* Grid & Fog Layer */}
-      <div className="absolute inset-0 grid grid-cols-[repeat(26,34px)] grid-rows-[repeat(19,34px)] z-10">
+      <div
+        className="absolute inset-0 grid z-10"
+        style={{
+          gridTemplateColumns: `repeat(${DUNGEON_BOARD_COLS}, ${DUNGEON_CELL_SIZE}px)`,
+          gridTemplateRows: `repeat(${DUNGEON_BOARD_ROWS}, ${DUNGEON_CELL_SIZE}px)`,
+        }}
+      >
         {gridCells.map((cell) => {
           const fog = isFogged(cell.x + 1, cell.y + 1);
           const isHovered = hoveredCell?.x === cell.x && hoveredCell?.y === cell.y;
@@ -217,7 +231,8 @@ export default function DungeonBoard({
           return (
             <div
               key={`cell-${cell.x}-${cell.y}`}
-              className={`w-[34px] h-[34px] relative ${getCursorClass(cell.x, cell.y)}`}
+              className={`relative ${getCursorClass(cell.x, cell.y)}`}
+              style={{ width: DUNGEON_CELL_SIZE, height: DUNGEON_CELL_SIZE }}
               onClick={() => handleCellClick(cell.x, cell.y)}
               onMouseEnter={() => handleCellHover(cell.x, cell.y)}
             >

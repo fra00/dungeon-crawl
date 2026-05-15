@@ -15,6 +15,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, cleanup } from "@testing-library/react";
 import { useTurnLogic } from "../../dungeon-use-turn-logic.js";
+import { mergeOpenedDoorsAfterStep } from "../../dungeon-melee-doorway.js";
 
 function buildConfig({
   heroAt = { x: 5, y: 10 },
@@ -294,17 +295,9 @@ describe("REGRESSION: porta + script evento 8 attraversa la stanza correttamente
           const cloned = JSON.parse(JSON.stringify(src));
           const h = cloned.heroes.find(x => x.turnOrder === cloned.currentTurn);
           if (h) { h.x = nextX; h.y = nextY; }
-          // mergeOpenedDoorsAfterStep: apre la porta SOLO quando si lascia
-          // la cella della porta (atFrom). Arrivare su una porta non la apre.
           const fromX = src.heroes.find(x => x.turnOrder === src.currentTurn)?.x;
           const fromY = src.heroes.find(x => x.turnOrder === src.currentTurn)?.y;
-          for (const p of cloned.currentMap.porte || []) {
-            if (p.x === fromX && p.y === fromY) {
-              const k = `${p.x},${p.y}`;
-              if (!cloned.openedDoors.includes(k)) cloned.openedDoors.push(k);
-            }
-          }
-          return cloned;
+          return mergeOpenedDoorsAfterStep(cloned, fromX, fromY, nextX, nextY);
         });
       }),
       executeMissionScripts: vi.fn(({ baseSession, eventType }) => {
