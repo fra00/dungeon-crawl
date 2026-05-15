@@ -68,11 +68,10 @@ Una versione precedente provava una geometria simmetrica (gating su entrambi i v
 ## Stato della porta (apertura)
 
 `gameSession.openedDoors` è un array di chiavi `"x,y"` riferite alla **cella della porta**. Una porta diventa "aperta" quando:
-- L'eroe **attraversa** la coppia direzionale gestita (`findDoorGatingPair` in `mergeOpenedDoorsAfterStep`), in qualsiasi direzione (porta↔vicino +1), indipendentemente dalla cella finale.
-- L'eroe **lascia** la cella della porta verso una direzione non gestita dalla geometria (uscita laterale).
+- L'eroe **cambia valo** attraversando la coppia direzionale gestita (`stepCrossesValoThroughDoor` / `mergeOpenedDoorsAfterStep` con `visibilityMap`). Transitare sulla casella porta **senza** cambio valo **non** apre.
 - Si esegue l'azione "Apri porta" (`openPassage` in [dungeon-use-session-manager.js](mdc:dungeon-use-session-manager.js)).
 
-Arrivare sulla porta da una cella **non** sulla coppia gestita (es. lato -1) **non** la apre: resta disponibile il pulsante "Apri porta". Attraversare la coppia (cambio valo) la apre al passo del movimento, non solo quando si esce dalla casella porta.
+`mergeOpenedDoorsAfterStep` richiede `options.visibilityMap` (mappa board / fog con `data[].valo`). Senza mappa non auto-apre (conservativo). Vale anche per i mostri (`updateMonsterState`): aggiunge solo `openedDoors`, **non** chiama `revealFromPoint` (la nebbia resta com’è).
 
 Una porta aperta resta walkable per la propria coppia direzionale.
 

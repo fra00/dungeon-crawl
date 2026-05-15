@@ -8,7 +8,7 @@ import {
 export const BOARD_ZOOM_STORAGE_KEY = "dungeonBoardZoomStepIndex";
 
 /** Moltiplicatori sopra la scala "fit" (1 = solo adattamento allo slot). */
-export const BOARD_ZOOM_STEPS = [1, 1.2, 1.4, 1.6, 1.85];
+export const BOARD_ZOOM_STEPS = [1, 1.2, 1.4, 1.6, 1.85, 2.2, 2.55, 2.9];
 
 const MIN_CELL_PX = 10;
 const PINCH_ZOOM_IN_RATIO = 1.18;

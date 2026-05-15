@@ -136,6 +136,7 @@ export default function Dungeon({
         staticEquipment,
         staticItems,
         scriptVisibilityMap: boardVisibilityMap,
+        doorVisibilityMap: staticVisibilityMap,
     });
 
     const hooksInventoryLogic = useInventoryLogic({ staticEquipment, sessionManager: hooksSessionManager });

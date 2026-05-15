@@ -8,7 +8,7 @@
 
 import { useCallback } from 'react';
 import { executeDungeonScripts, moveCurrentHeroInSession, resolveHeroAttackInSession } from './dungeon-script-runtime';
-import { mergeOpenedDoorsAfterStep } from './dungeon-melee-doorway.js';
+import { mergeOpenedDoorsAfterStep, mergeOpenedDoorsAlongPath } from './dungeon-melee-doorway.js';
 import { applyTrapEffectOnCurrentHeroSession } from './dungeon-trap-effect-core.js';
 import {
   applyMonsterDeathMissionScripts,
@@ -40,6 +40,7 @@ export function useDungeonSessionManager({
   staticEquipment,
   staticItems,
   scriptVisibilityMap = null,
+  doorVisibilityMap = null,
 }) {
   const commitSessionUpdate = useCallback((updater) => {
     if (!onUpdateSession) return false;
@@ -575,7 +576,7 @@ export function useDungeonSessionManager({
     return true;
   }, [gameSession, onUpdateSession, commitSessionUpdate, staticItems, staticEquipment, onNotify]);
 
-  const updateMonsterState = useCallback((monsterId, nextX, nextY, statusesToRemove) => {
+  const updateMonsterState = useCallback((monsterId, nextX, nextY, statusesToRemove, options = {}) => {
     commitSessionUpdate((providedSession) => {
       const monster = providedSession.monsters.find(m => m.id === monsterId);
       if (monster == null) return providedSession;
@@ -598,15 +599,31 @@ export function useDungeonSessionManager({
 
       const updatedMonsters = providedSession.monsters.map(m => m.id === monsterId ? updatedMonster : m);
 
-      // I mostri attraversano le porte senza aggiungerle a openedDoors: così non si
-      // altera LOS/visibilità per gli eroi e la nebbia non viene rimossa indirettamente.
-      return {
+      let nextSession = {
         ...providedSession,
         monsters: updatedMonsters,
       };
+      if (nextX != null && nextY != null) {
+        const visMap = doorVisibilityMap ?? scriptVisibilityMap;
+        const doorOpts = { visibilityMap: visMap };
+        const movementPath = options.movementPath;
+        if (Array.isArray(movementPath) && movementPath.length >= 2) {
+          nextSession = mergeOpenedDoorsAlongPath(nextSession, movementPath, doorOpts);
+        } else {
+          nextSession = mergeOpenedDoorsAfterStep(
+            nextSession,
+            fromX,
+            fromY,
+            nextX,
+            nextY,
+            doorOpts
+          );
+        }
+      }
+      return nextSession;
     });
     return true;
-  }, [commitSessionUpdate]);
+  }, [commitSessionUpdate, scriptVisibilityMap, doorVisibilityMap]);
 
   const resolveMonsterAttack = useCallback((monsterId, heroId, combatResult) => {
     commitSessionUpdate((providedSession) => {
@@ -733,10 +750,12 @@ export function useDungeonSessionManager({
       const fromX = activeHero?.x;
       const fromY = activeHero?.y;
       let nextSession = moveCurrentHeroInSession(sourceSession, nextX, nextY);
-      nextSession = mergeOpenedDoorsAfterStep(nextSession, fromX, fromY, nextX, nextY);
+      nextSession = mergeOpenedDoorsAfterStep(nextSession, fromX, fromY, nextX, nextY, {
+        visibilityMap: doorVisibilityMap ?? scriptVisibilityMap,
+      });
       return nextSession;
     });
-  }, [gameSession, commitSessionUpdate]);
+  }, [gameSession, commitSessionUpdate, scriptVisibilityMap, doorVisibilityMap]);
 
   const clearCurrentHeroStatus = useCallback((statusName) => {
     commitSessionUpdate((providedSession) => {
@@ -797,11 +816,13 @@ export function useDungeonSessionManager({
         heroes: updatedHeroes,
         currentMap: updatedMap
       };
-      nextSession = mergeOpenedDoorsAfterStep(nextSession, hero.x, hero.y, nextX, nextY);
+      nextSession = mergeOpenedDoorsAfterStep(nextSession, hero.x, hero.y, nextX, nextY, {
+        visibilityMap: doorVisibilityMap ?? scriptVisibilityMap,
+      });
       return nextSession;
     });
     return true;
-  }, [commitSessionUpdate]);
+  }, [commitSessionUpdate, scriptVisibilityMap, doorVisibilityMap]);
 
   /** Same mechanical effects as stepping on a trap, without moving the hero (e.g. failed disarm while adjacent). */
   const resolveTrapEffectOnCurrentHero = useCallback((trapType, rockFallX, rockFallY) => {

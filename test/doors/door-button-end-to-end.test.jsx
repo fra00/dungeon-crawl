@@ -102,9 +102,12 @@ const STABLE_HOOKS_PATHFINDING = {
  * Hook composito che monta useTurnLogic + useMapInteraction reali con un
  * sessionManager basato sui REALI moveCurrentHeroInSession + mergeOpenedDoorsAfterStep.
  */
-function useDoorTestRig(initialSession) {
+function useDoorTestRig(initialSession, { visibilityMap: visibilityMapOverride } = {}) {
   const [session, setSession] = useState(initialSession);
-  const visibilityMap = useMemo(makeVisibilityMap, []);
+  const visibilityMap = useMemo(
+    () => visibilityMapOverride ?? makeVisibilityMap(),
+    [visibilityMapOverride]
+  );
   const onNotify = useMemo(() => () => {}, []);
 
   const sessionManager = useMemo(
@@ -113,7 +116,9 @@ function useDoorTestRig(initialSession) {
         setSession((prev) => {
           const hero = prev.heroes.find((h) => h.turnOrder === prev.currentTurn);
           let next = moveCurrentHeroInSession(prev, nextX, nextY);
-          next = mergeOpenedDoorsAfterStep(next, hero.x, hero.y, nextX, nextY);
+          next = mergeOpenedDoorsAfterStep(next, hero.x, hero.y, nextX, nextY, {
+            visibilityMap,
+          });
           return next;
         });
       },
@@ -139,7 +144,7 @@ function useDoorTestRig(initialSession) {
       resolveMovementTrap: () => {},
       resolveTrapEffectOnCurrentHero: () => {},
     }),
-    []
+    [visibilityMap]
   );
 
   const mapInteractionLogic = useMapInteraction({
@@ -252,7 +257,13 @@ describe("End-to-end: arrivo sulla porta → pulsante 'Apri porta' visibile", ()
       scriptImages: [],
     };
 
-    const { result } = renderHook(() => useDoorTestRig(initial));
+    const visOriz = {
+      data: [
+        { x: 5, y: 10, valo: "A" },
+        { x: 5, y: 11, valo: "B" },
+      ],
+    };
+    const { result } = renderHook(() => useDoorTestRig(initial, { visibilityMap: visOriz }));
 
     // Hero al neighbor (5,11): canOpenDoor truthy (può aprire andando alla door cell).
     expect(result.current.turnLogic.canOpenDoor).toBeTruthy();

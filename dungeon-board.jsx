@@ -96,9 +96,17 @@ export default function DungeonBoard({
     }
   }, [targetingSpell, onCellClick]);
 
-  const handleMonsterHover = useCallback((monster) => {
-    // Handled natively via title attribute for immediate lightweight feedback
-  }, []);
+  const handleMonsterHover = useCallback(
+    (monster) => {
+      if (!targetingSpell || !monster) return;
+      const isMonsterSpell =
+        targetingSpell.targetType === "Monster" || targetingSpell.effetto === "Genio";
+      if (!isMonsterSpell) return;
+      setHoveredCell({ x: monster.x - 1, y: monster.y - 1 });
+      onCellHover?.(monster.x, monster.y);
+    },
+    [targetingSpell, onCellHover]
+  );
 
   const gridCells = useMemo(() => {
     const cells = [];

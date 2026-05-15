@@ -211,7 +211,18 @@ export function useMonsterAI(config) {
         }
 
         if (targetCell && (targetCell.x !== monster.x || targetCell.y !== monster.y)) {
-          sessionManager?.updateMonsterState(monster.id, targetCell.x, targetCell.y, statusesToRemove);
+          const movementPath = [{ x: monster.x, y: monster.y }];
+          for (const step of reachablePath) {
+            movementPath.push(step);
+            if (step.x === targetCell.x && step.y === targetCell.y) break;
+          }
+          sessionManager?.updateMonsterState(
+            monster.id,
+            targetCell.x,
+            targetCell.y,
+            statusesToRemove,
+            { movementPath }
+          );
           currentMonsterX = targetCell.x;
           currentMonsterY = targetCell.y;
           await sleep(400);

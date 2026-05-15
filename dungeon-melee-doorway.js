@@ -1,4 +1,23 @@
 import { findDoorGatingPair } from "./dungeon-door-rules.js";
+function getValoKey(visibilityMap, x, y) {
+  const data = visibilityMap?.data;
+  if (!Array.isArray(data)) return null;
+  const cell = data.find((c) => Number(c.x) === Number(x) && Number(c.y) === Number(y));
+  if (cell?.valo == null) return null;
+  const parsed = Number(cell.valo);
+  return Number.isNaN(parsed) ? String(cell.valo) : parsed;
+}
+
+/**
+ * True se il passo attraversa una porta autorata E cambia valo (stanza/area).
+ */
+export function stepCrossesValoThroughDoor(visibilityMap, porte, fromX, fromY, toX, toY) {
+  if (!findDoorGatingPair(porte, fromX, fromY, toX, toY)) return false;
+  const fromValo = getValoKey(visibilityMap, fromX, fromY);
+  const toValo = getValoKey(visibilityMap, toX, toY);
+  if (fromValo == null || toValo == null) return false;
+  return fromValo !== toValo;
+}
 
 /**
  * Melee across two visibility areas: allowed only if the attacker or defender stands
@@ -16,48 +35,44 @@ export function cellIsOpenDoorTile(gameSession, x, y) {
 }
 
 /**
- * Segna una porta come aperta quando un passo la attraversa (coppia direzionale gestita)
- * oppure quando l'eroe lascia la cella della porta verso una direzione non gestita.
+ * Segna una porta come aperta solo se il passo attraversa la coppia gestita
+ * E cambia valo (non basta transitare sulla casella porta nella stessa area).
  *
- * Esempio (porta a (5,2), oriz=false → gata `(5,2) ↔ (6,2)`):
- *   - Step (4,2) → (5,2): non è la coppia gestita → resta chiusa (pulsante "Apri porta").
- *   - Step (6,2) → (5,2): attraversa la coppia → "5,2" in openedDoors subito.
- *   - Step (5,2) → (6,2): idem.
- *   - Step (5,2) → (4,2): esce dalla cella porta (lato non gestito) → si apre comunque.
- *
- * Chiamare dopo lo spostamento dell’eroe. I mostri non usano questa funzione.
+ * @param {{ visibilityMap?: { data?: Array<{x:number,y:number,valo:unknown}> } } }} [options]
  */
-export function mergeOpenedDoorsAfterStep(session, fromX, fromY, toX, toY) {
+/**
+ * Apre le porte attraversate lungo un percorso (un passo per cella adiacente).
+ * Necessario per i mostri che si teletrasportano all'ultima casella del path in un solo update.
+ */
+export function mergeOpenedDoorsAlongPath(session, path, options = {}) {
+  if (session == null || !Array.isArray(path) || path.length < 2) return session;
+  let next = session;
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1];
+    const b = path[i];
+    next = mergeOpenedDoorsAfterStep(next, a.x, a.y, b.x, b.y, options);
+  }
+  return next;
+}
+
+export function mergeOpenedDoorsAfterStep(session, fromX, fromY, toX, toY, options = {}) {
   if (session == null) return session;
   if (fromX == null || fromY == null || toX == null || toY == null) return session;
   const porte = session.currentMap?.porte;
   if (!porte?.length) return session;
-  const keys = new Set(session.openedDoors || []);
-  let changed = false;
 
-  const gatedDoor = findDoorGatingPair(porte, fromX, fromY, toX, toY);
-  if (gatedDoor) {
-    const k = `${Number(gatedDoor.x)},${Number(gatedDoor.y)}`;
-    if (!keys.has(k)) {
-      keys.add(k);
-      changed = true;
-    }
-  } else {
-    for (const p of porte) {
-      const px = Number(p.x);
-      const py = Number(p.y);
-      const leftDoorCell = px === Number(fromX) && py === Number(fromY);
-      if (leftDoorCell) {
-        const k = `${px},${py}`;
-        if (!keys.has(k)) {
-          keys.add(k);
-          changed = true;
-        }
-      }
-    }
+  const visibilityMap = options.visibilityMap ?? null;
+  if (!stepCrossesValoThroughDoor(visibilityMap, porte, fromX, fromY, toX, toY)) {
+    return session;
   }
 
-  if (!changed) return session;
+  const gatedDoor = findDoorGatingPair(porte, fromX, fromY, toX, toY);
+  if (!gatedDoor) return session;
+
+  const k = `${Number(gatedDoor.x)},${Number(gatedDoor.y)}`;
+  const keys = new Set(session.openedDoors || []);
+  if (keys.has(k)) return session;
+  keys.add(k);
   return { ...session, openedDoors: Array.from(keys) };
 }
 

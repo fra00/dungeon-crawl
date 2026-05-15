@@ -12,6 +12,12 @@ import { cellIsOpenDoorTile, mergeOpenedDoorsAfterStep } from "./dungeon-melee-d
 import { moveCurrentHeroInSession } from "./dungeon-script-runtime.js";
 import { truncateHeroPathForMonsterObstacles } from "./dungeon-hero-path-monsters.js";
 
+/** Per SFX/consumo arma: il bastone (diago) è corpo a corpo anche se distanza Manhattan = 2. */
+export function isHeroAttackRanged(dist, dx, dy, canAttackDiagonal) {
+  const isDiagonalMelee = dx === 1 && dy === 1 && canAttackDiagonal;
+  return !isDiagonalMelee && (dist > 1 || (dx === 1 && dy === 1));
+}
+
 export function useTurnLogic({
   gameSession,
   visibilityMap,
@@ -534,7 +540,7 @@ export function useTurnLogic({
 
       setCanOpenDoor(mapInteractionLogic?.isFrontOfDoor?.(hero.x, hero.y, null) || null);
 
-      const isRanged = dist > 1 || (dx === 1 && dy === 1 && !stats.canAttackDiagonal);
+      const isRanged = isHeroAttackRanged(dist, dx, dy, stats.canAttackDiagonal);
       let consumedId = null;
       if (isRanged) {
         consumedId = heroStatsLogic.getConsumableWeaponId(hero);
@@ -822,7 +828,9 @@ export function useTurnLogic({
       // runtime vede già l'eroe nella nuova cella e il commit finale contiene
       // sia il movimento sia gli effetti dello script.
       let movedSession = moveCurrentHeroInSession(gameSession, nextPos.x, nextPos.y);
-      movedSession = mergeOpenedDoorsAfterStep(movedSession, oldPos.x, oldPos.y, nextPos.x, nextPos.y);
+      movedSession = mergeOpenedDoorsAfterStep(movedSession, oldPos.x, oldPos.y, nextPos.x, nextPos.y, {
+        visibilityMap,
+      });
 
       const scriptRes1 = sessionManager.executeMissionScripts({
         baseSession: movedSession,

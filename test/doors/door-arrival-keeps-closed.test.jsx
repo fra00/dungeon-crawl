@@ -12,8 +12,7 @@
  *        anche quando l'eroe ARRIVAVA su di essa (`atTo`). Di conseguenza
  *        `isFrontOfDoor` trovava la porta in `openedDoors` e la saltava.
  *
- * Fix storico: non aprire su arrivi laterali non gestiti (es. (4,2)→(5,2)).
- * Attraversamento della coppia gestita (es. (6,2)→(5,2)) apre subito la porta.
+ * Apertura automatica solo al cambio valo attraversando la coppia porta gestita.
  */
 import { describe, it, expect, afterEach } from "vitest";
 import { renderHook, cleanup } from "@testing-library/react";
@@ -21,6 +20,15 @@ import { mergeOpenedDoorsAfterStep } from "../../dungeon-melee-doorway.js";
 import { useMapInteraction } from "../../dungeon-use-map-interaction.js";
 
 afterEach(() => cleanup());
+
+const VIS_DOOR_52 = {
+  data: [
+    { x: 4, y: 2, valo: "A" },
+    { x: 5, y: 2, valo: "A" },
+    { x: 6, y: 2, valo: "B" },
+  ],
+};
+const doorOpts = { visibilityMap: VIS_DOOR_52 };
 
 describe("Arrivo sulla cella di una porta: la porta resta chiusa", () => {
   it("step (4,2) → (5,2) [door, oriz=false]: openedDoors NON contiene la porta", () => {
@@ -31,7 +39,7 @@ describe("Arrivo sulla cella di una porta: la porta resta chiusa", () => {
       openedDoors: [],
       currentMap: { porte: [{ x: 5, y: 2, oriz: false }] },
     };
-    const session1 = mergeOpenedDoorsAfterStep(session0, 4, 2, 5, 2);
+    const session1 = mergeOpenedDoorsAfterStep(session0, 4, 2, 5, 2, doorOpts);
     expect(session1.openedDoors).toEqual([]);
   });
 
@@ -59,12 +67,12 @@ describe("Arrivo sulla cella di una porta: la porta resta chiusa", () => {
     expect(r.destination).toEqual({ x: 6, y: 2 });
   });
 
-  it("attraversamento vicino → porta (coppia gestita): la porta si apre subito", () => {
+  it("attraversamento con cambio valo sulla coppia gestita: la porta si apre", () => {
     const session0 = {
       currentMap: { porte: [{ x: 5, y: 2, oriz: false }] },
       openedDoors: [],
     };
-    const session1 = mergeOpenedDoorsAfterStep(session0, 6, 2, 5, 2);
+    const session1 = mergeOpenedDoorsAfterStep(session0, 6, 2, 5, 2, doorOpts);
     expect(session1.openedDoors).toEqual(["5,2"]);
   });
 
@@ -84,7 +92,7 @@ describe("Arrivo sulla cella di una porta: la porta resta chiusa", () => {
         ],
       },
     };
-    session = mergeOpenedDoorsAfterStep(session, 4, 2, 5, 2);
+    session = mergeOpenedDoorsAfterStep(session, 4, 2, 5, 2, doorOpts);
     session.heroes = [{ ...session.heroes[0], x: 5, y: 2 }];
     expect(session.openedDoors).toEqual([]);
 
@@ -94,8 +102,7 @@ describe("Arrivo sulla cella di una porta: la porta resta chiusa", () => {
     );
     expect(result.current.isFrontOfDoor(5, 2)).not.toBeNull();
 
-    // Step 2: lascio la cella della porta. Si apre.
-    session = mergeOpenedDoorsAfterStep(session, 5, 2, 6, 2);
+    session = mergeOpenedDoorsAfterStep(session, 5, 2, 6, 2, doorOpts);
     session.heroes = [{ ...session.heroes[0], x: 6, y: 2 }];
     expect(session.openedDoors).toEqual(["5,2"]);
 
