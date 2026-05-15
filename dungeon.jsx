@@ -132,7 +132,8 @@ export default function Dungeon({
         onScriptBlockingDialog: enqueueScriptDialogs,
         fogOfWarLogic: hooksFogOfWar,
         staticEquipment,
-        staticItems
+        staticItems,
+        scriptVisibilityMap: boardVisibilityMap,
     });
 
     const hooksInventoryLogic = useInventoryLogic({ staticEquipment, sessionManager: hooksSessionManager });
@@ -273,7 +274,8 @@ export default function Dungeon({
         combatLogic: hooksCombatLogic,
         mapInteractionLogic: hooksMapInteraction,
         fogOfWarLogic: hooksFogOfWar,
-        heroStatsLogic: hooksHeroStats
+        heroStatsLogic: hooksHeroStats,
+        onScriptBlockingDialog: enqueueScriptDialogs,
     });
 
     const hooksMonsterAI = useMonsterAI({

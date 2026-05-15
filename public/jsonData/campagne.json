@@ -1,7 +1,12 @@
 {
   "nome_campagna": "Set Base Dungeon",
   "missioni": [
-    { "ordine": 1, "file": "tutorial1.json", "titolo": "Benvenuti nel dungeon" },
-    { "ordine": 1, "file": "DGBase01.json", "titolo": "Benvenuti nel dungeon" }
+    {
+      "ordine": 1,
+      "file": "tutorial1.json",
+      "titolo": "Benvenuti nel dungeon"
+    },
+    { "ordine": 2, "file": "tutorial2.json", "titolo": "Un magico incontro" },
+    { "ordine": 3, "file": "DGBase01.json", "titolo": "Benvenuti nel dungeon" }
   ]
 }

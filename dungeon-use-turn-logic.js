@@ -10,6 +10,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { cellAllowsMapExit } from "./editor-map-model.js";
 import { cellIsOpenDoorTile, mergeOpenedDoorsAfterStep } from "./dungeon-melee-doorway.js";
 import { moveCurrentHeroInSession } from "./dungeon-script-runtime.js";
+import { truncateHeroPathForMonsterObstacles } from "./dungeon-hero-path-monsters.js";
 
 export function useTurnLogic({
   gameSession,
@@ -308,7 +309,13 @@ export function useTurnLogic({
 
     const path = hooksPathfinding.calculatePath(hero.x, hero.y, x, y, movementPoints, hero.heroId);
     if (path && path.length > 0) {
-      const fullPath = [{ x: hero.x, y: hero.y }, ...path];
+      let fullPath = [{ x: hero.x, y: hero.y }, ...path];
+      fullPath = truncateHeroPathForMonsterObstacles(gameSession, fullPath, hero.heroId);
+      if (fullPath.length < 2) {
+        setHoveredPath([]);
+        setHoveredPathVariant(null);
+        return;
+      }
       setHoveredPath(fullPath);
 
       let crossings = 0;
@@ -352,14 +359,35 @@ export function useTurnLogic({
     }
 
     if (path && path.length > 1 && path[path.length - 1].x === x && path[path.length - 1].y === y) {
-      if (pathVariant === "blocked-by-second-wall") {
+      const trunc = truncateHeroPathForMonsterObstacles(gameSession, path, hero.heroId);
+      if (!trunc || trunc.length < 2) {
+        onNotify("Il percorso è bloccato da un mostro.");
+        setCanOpenDoor(mapInteractionLogic?.isFrontOfDoor?.(hero.x, hero.y, null) || null);
+        return;
+      }
+      const pathToWalk = trunc;
+      if (pathToWalk[pathToWalk.length - 1].x !== x || pathToWalk[pathToWalk.length - 1].y !== y) {
+        onNotify("Movimento limitato: mostro lungo il percorso.");
+      }
+      let crossings = 0;
+      for (let i = 1; i < pathToWalk.length; i++) {
+        const oldVis = visibilityMap?.data?.find(c => c.x === pathToWalk[i - 1].x && c.y === pathToWalk[i - 1].y);
+        const newVis = visibilityMap?.data?.find(c => c.x === pathToWalk[i].x && c.y === pathToWalk[i].y);
+        const isDoor = gameSession?.currentMap?.porte?.some(p => p.x === pathToWalk[i].x && p.y === pathToWalk[i].y) || gameSession?.openedDoors?.includes(`${pathToWalk[i].x},${pathToWalk[i].y}`);
+
+        if (oldVis?.valo !== newVis?.valo && !isDoor) {
+          crossings++;
+        }
+      }
+      const wallVariant = hero.activeStatus?.includes("WallPass") && crossings > 1 ? "blocked-by-second-wall" : "valid";
+      if (wallVariant === "blocked-by-second-wall") {
         onNotify("Passapareti permette di attraversare un solo muro.");
         setCanOpenDoor(mapInteractionLogic?.isFrontOfDoor?.(hero.x, hero.y, null) || null);
         return;
       }
       setCanOpenDoor(null);
       setIsMoving(true);
-      setActivePath([...path]);
+      setActivePath([...pathToWalk]);
       setHoveredPath([]);
       setHoveredPathVariant(null);
     } else {
@@ -489,19 +517,6 @@ export function useTurnLogic({
       }
 
       sessionManager.resolveHeroAttack(monsterId, combatResult, statusesToRemove, consumedId, attackBaseSession, isRanged);
-
-      if (newBody <= 0) {
-        const afterAttackSession = {
-          ...attackBaseSession,
-          monsters: attackBaseSession.monsters?.filter(m => m.id !== monsterId) || []
-        };
-        sessionManager.executeMissionScripts({
-          baseSession: afterAttackSession,
-          eventType: 2,
-          context: { monsterTypeId: monster.monster?.id, onDeath: true },
-          visibilityMap
-        });
-      }
     }
   }, [
     gameSession,
@@ -702,6 +717,22 @@ export function useTurnLogic({
           }
           pendingStairsExitConfirmedRef.current = true;
         }
+      }
+
+      const heroForStep = gameSession?.heroes?.find(h => h.turnOrder === gameSession.currentTurn);
+      if (
+        heroForStep &&
+        gameSession?.monsters?.some(
+          (m) =>
+            m.x === nextPos.x &&
+            m.y === nextPos.y &&
+            (m.currentBody || 0) > 0
+        )
+      ) {
+        onNotify("Movimento interrotto: la casella è occupata da un mostro.");
+        setActivePath([{ x: oldPos.x, y: oldPos.y }]);
+        setIsMoving(false);
+        return;
       }
 
       setMovementPoints(prev => (prev !== null ? prev - 1 : 0));

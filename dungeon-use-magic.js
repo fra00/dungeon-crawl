@@ -7,6 +7,10 @@
  */
 
 import { useCallback } from 'react';
+import {
+  applyMonsterDeathMissionScripts,
+  flushMonsterDeathScriptSideEffects,
+} from './dungeon-monster-death-scripts.js';
 
 export function useMagicLogic({
   gameSession,
@@ -17,7 +21,8 @@ export function useMagicLogic({
   combatLogic,
   mapInteractionLogic,
   fogOfWarLogic,
-  heroStatsLogic
+  heroStatsLogic,
+  onScriptBlockingDialog,
 }) {
 
   const commitSessionUpdate = useCallback((updater) => {
@@ -94,7 +99,7 @@ export function useMagicLogic({
     }
 
     commitSessionUpdate((baseSession) => {
-      const nextSession = {
+      let nextSession = {
         ...baseSession,
         heroes: baseSession.heroes?.map(h => ({
           ...h,
@@ -121,7 +126,19 @@ export function useMagicLogic({
             m.currentBody -= damage;
             onNotify?.(`${m.monster?.nome} subisce ${damage} danni!`);
             if (m.currentBody <= 0) {
+              const killedSnap = { ...m };
               nextSession.monsters = nextSession.monsters.filter(x => x.id !== m.id);
+              const dr = applyMonsterDeathMissionScripts(
+                nextSession,
+                killedSnap,
+                fogOfWarLogic?.fogVisibilityMap ?? null
+              );
+              flushMonsterDeathScriptSideEffects(dr, {
+                onNotify,
+                fogOfWarLogic,
+                onScriptBlockingDialog,
+              });
+              if (dr.handled) nextSession = dr.session;
             } else if (m.activeStatus.includes("Sleep")) {
               m.activeStatus = m.activeStatus.filter(s => s !== "Sleep");
               onNotify?.(`${m.monster?.nome} si è svegliato!`);
@@ -137,7 +154,19 @@ export function useMagicLogic({
             m.currentBody -= damage;
             onNotify?.(`${m.monster?.nome} subisce ${damage} danni!`);
             if (m.currentBody <= 0) {
+              const killedSnap = { ...m };
               nextSession.monsters = nextSession.monsters.filter(x => x.id !== m.id);
+              const dr = applyMonsterDeathMissionScripts(
+                nextSession,
+                killedSnap,
+                fogOfWarLogic?.fogVisibilityMap ?? null
+              );
+              flushMonsterDeathScriptSideEffects(dr, {
+                onNotify,
+                fogOfWarLogic,
+                onScriptBlockingDialog,
+              });
+              if (dr.handled) nextSession = dr.session;
             } else if (m.activeStatus.includes("Sleep")) {
               m.activeStatus = m.activeStatus.filter(s => s !== "Sleep");
               onNotify?.(`${m.monster?.nome} si è svegliato!`);
@@ -223,7 +252,19 @@ export function useMagicLogic({
                 onNotify?.(`Il Genio attacca ${m.monster?.nome}!`);
                 
                 if (m.currentBody <= 0) {
+                  const killedSnap = { ...m };
                   nextSession.monsters = nextSession.monsters.filter(x => x.id !== m.id);
+                  const dr = applyMonsterDeathMissionScripts(
+                    nextSession,
+                    killedSnap,
+                    fogOfWarLogic?.fogVisibilityMap ?? null
+                  );
+                  flushMonsterDeathScriptSideEffects(dr, {
+                    onNotify,
+                    fogOfWarLogic,
+                    onScriptBlockingDialog,
+                  });
+                  if (dr.handled) nextSession = dr.session;
                 } else if (m.activeStatus.includes("Sleep")) {
                   m.activeStatus = m.activeStatus.filter(s => s !== "Sleep");
                   onNotify?.(`${m.monster?.nome} si è svegliato!`);
@@ -305,7 +346,7 @@ export function useMagicLogic({
 
     onActionDone?.();
 
-  }, [gameSession, staticSpells, fogOfWarLogic, combatLogic, mapInteractionLogic, commitSessionUpdate, onNotify, onActionDone]);
+  }, [gameSession, staticSpells, fogOfWarLogic, combatLogic, mapInteractionLogic, commitSessionUpdate, onNotify, onActionDone, onScriptBlockingDialog]);
 
   const removeExpiredEffects = useCallback((heroId, monsterId, effect) => {
     commitSessionUpdate((baseSession) => {

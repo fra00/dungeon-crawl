@@ -10,6 +10,10 @@ import { useCallback } from 'react';
 import { executeDungeonScripts, moveCurrentHeroInSession, resolveHeroAttackInSession } from './dungeon-script-runtime';
 import { mergeOpenedDoorsAfterStep } from './dungeon-melee-doorway.js';
 import { applyTrapEffectOnCurrentHeroSession } from './dungeon-trap-effect-core.js';
+import {
+  applyMonsterDeathMissionScripts,
+  flushMonsterDeathScriptSideEffects,
+} from './dungeon-monster-death-scripts.js';
 
 /** True when using the item should apply at least one in-game rule (not flavor-only). */
 function itemDefHasUsableEffect(itemDef) {
@@ -34,7 +38,8 @@ export function useDungeonSessionManager({
   onScriptBlockingDialog,
   fogOfWarLogic,
   staticEquipment,
-  staticItems
+  staticItems,
+  scriptVisibilityMap = null,
 }) {
   const commitSessionUpdate = useCallback((updater) => {
     if (!onUpdateSession) return false;
@@ -287,6 +292,7 @@ export function useDungeonSessionManager({
 
       const updatedHero = { ...currentHero };
       let updatedMonsters = [...(providedSession.monsters || [])];
+      let killedForDeathScript = null;
 
       if (itemDef.hp !== 0) {
         updatedHero.currentBody += itemDef.hp;
@@ -339,6 +345,7 @@ export function useDungeonSessionManager({
               
               if (damagedMonster.currentBody <= 0) {
                 updatedMonsters = updatedMonsters.filter(m => m.id !== targetMonsterId);
+                killedForDeathScript = targetMonster;
               } else {
                 updatedMonsters = updatedMonsters.map(m => m.id === targetMonsterId ? damagedMonster : m);
               }
@@ -381,15 +388,28 @@ export function useDungeonSessionManager({
 
       const updatedHeroes = providedSession.heroes.map(h => h.heroId === heroId ? updatedHero : h);
 
-      return {
+      let nextSession = {
         ...providedSession,
         heroes: updatedHeroes,
         monsters: updatedMonsters
       };
+      if (killedForDeathScript) {
+        const dr = applyMonsterDeathMissionScripts(nextSession, killedForDeathScript, scriptVisibilityMap);
+        flushMonsterDeathScriptSideEffects(dr, {
+          onNotify,
+          fogOfWarLogic,
+          onScriptBlockingDialog,
+        });
+        if (dr.handled) {
+          nextSession = dr.session;
+        }
+      }
+
+      return nextSession;
     });
 
     return true;
-  }, [gameSession, staticItems, commitSessionUpdate, onNotify]);
+  }, [gameSession, staticItems, commitSessionUpdate, onNotify, scriptVisibilityMap, fogOfWarLogic, onScriptBlockingDialog]);
 
   const collectTreasureAtCell = useCallback((heroId, treasureX, treasureY) => {
     if (!onUpdateSession) return false;
@@ -819,7 +839,8 @@ export function useDungeonSessionManager({
     const sourceSession = baseSession != null ? baseSession : gameSession;
     if (sourceSession == null) return false;
 
-    const newSession = resolveHeroAttackInSession(sourceSession, {
+    const monsterBefore = sourceSession.monsters?.find((m) => m.id === monsterId);
+    let newSession = resolveHeroAttackInSession(sourceSession, {
       monsterId,
       combatResult,
       statusesToRemove,
@@ -827,9 +848,20 @@ export function useDungeonSessionManager({
       isRanged
     });
 
+    const stillAlive = newSession.monsters?.some((m) => m.id === monsterId);
+    if (monsterBefore && !stillAlive) {
+      const dr = applyMonsterDeathMissionScripts(newSession, monsterBefore, scriptVisibilityMap);
+      flushMonsterDeathScriptSideEffects(dr, {
+        onNotify,
+        fogOfWarLogic,
+        onScriptBlockingDialog,
+      });
+      newSession = dr.handled ? dr.session : newSession;
+    }
+
     commitSessionUpdate(() => newSession);
     return true;
-  }, [gameSession, commitSessionUpdate]);
+  }, [gameSession, commitSessionUpdate, scriptVisibilityMap, onNotify, fogOfWarLogic, onScriptBlockingDialog]);
 
   const advanceTurn = useCallback((nextTurn, clearStatusName) => {
     commitSessionUpdate((providedSession) => {

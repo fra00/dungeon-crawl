@@ -287,7 +287,7 @@ describe("useTurnLogic — integrazione con executeMissionScripts", () => {
     expect(config.sessionManager.resolveHeroAttack).toHaveBeenCalled();
   });
 
-  it("evento 2 (uccisione mostro) chiamato con onDeath:true e monsterTypeId", () => {
+  it("uccisione mostro: solo resolveHeroAttack (session manager) applica script morte; niente seconda executeMissionScripts onDeath dal turno", () => {
     const calls = [];
     const config = buildConfig({
       heroAt: { x: 5, y: 5 },
@@ -297,14 +297,15 @@ describe("useTurnLogic — integrazione con executeMissionScripts", () => {
         return { handled: false };
       },
     });
-    // Mostro con currentBody=1, danno 1 → muore
     config.gameSession.monsters[0].currentBody = 1;
 
     const { result } = renderHook(p => useTurnLogic(p), { initialProps: config });
     act(() => result.current.handleMonsterClick("m1"));
 
-    const onDeath = calls.find(c => c.ev === 2 && c.ctx?.onDeath === true);
-    expect(onDeath).toBeTruthy();
-    expect(onDeath.ctx).toMatchObject({ monsterTypeId: 7, onDeath: true });
+    expect(config.sessionManager.resolveHeroAttack).toHaveBeenCalledTimes(1);
+    const onDeathFromTurnLogic = calls.some((c) => c.ev === 2 && c.ctx?.onDeath === true);
+    expect(onDeathFromTurnLogic).toBe(false);
+    const preAttack = calls.find((c) => c.ev === 2 && c.ctx?.onDeath === false);
+    expect(preAttack?.ctx).toMatchObject({ monsterTypeId: 7, onDeath: false });
   });
 });
