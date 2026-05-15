@@ -183,6 +183,48 @@ export default function DungeonBoard({
             50% { transform: rotate(180deg) translate3d(14px, -12px, 0); }
             100% { transform: rotate(180deg) translate3d(30px, 22px, 0); }
           }
+          @keyframes dungeon-tile-reveal-pop {
+            0% { opacity: 0; transform: scale(0.35); }
+            65% { opacity: 1; transform: scale(1.1); }
+            100% { opacity: 1; transform: scale(1); }
+          }
+          @keyframes dungeon-tile-glow-treasure {
+            0%, 100% { filter: drop-shadow(0 0 3px rgba(234, 179, 8, 0.45)); }
+            50% { filter: drop-shadow(0 0 8px rgba(250, 204, 21, 0.75)); }
+          }
+          @keyframes dungeon-tile-glow-trap {
+            0%, 100% { filter: drop-shadow(0 0 3px rgba(220, 38, 38, 0.5)); }
+            50% { filter: drop-shadow(0 0 7px rgba(249, 115, 22, 0.65)); }
+          }
+          @keyframes dungeon-tile-glow-passage {
+            0%, 100% { filter: drop-shadow(0 0 3px rgba(6, 182, 212, 0.55)); }
+            50% { filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.55)); }
+          }
+          .dungeon-board-special-tile-treasure {
+            animation: dungeon-tile-reveal-pop 0.55s cubic-bezier(0.34, 1.45, 0.64, 1) forwards,
+              dungeon-tile-glow-treasure 2.6s ease-in-out 0.55s infinite;
+            transform-origin: center center;
+          }
+          .dungeon-board-special-tile-trap {
+            animation: dungeon-tile-reveal-pop 0.55s cubic-bezier(0.34, 1.45, 0.64, 1) forwards,
+              dungeon-tile-glow-trap 2.4s ease-in-out 0.55s infinite;
+            transform-origin: center center;
+          }
+          .dungeon-board-special-tile-passage {
+            animation: dungeon-tile-reveal-pop 0.55s cubic-bezier(0.34, 1.45, 0.64, 1) forwards,
+              dungeon-tile-glow-passage 2.8s ease-in-out 0.55s infinite;
+            transform-origin: center center;
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .dungeon-board-special-tile-treasure,
+            .dungeon-board-special-tile-trap,
+            .dungeon-board-special-tile-passage {
+              animation: none;
+              opacity: 1;
+              transform: none;
+              filter: none;
+            }
+          }
         `}
       </style>
 
@@ -303,22 +345,29 @@ export default function DungeonBoard({
 
         {/* Secret Passages */}
         {secretPassages?.map((sp, i) => (
-          <img
+          <div
             key={`sp-${i}`}
-            src={`/img/cell/${sp.img}`}
-            className="absolute drop-shadow-md"
-            style={{
-              left: (sp.x - 1) * 34,
-              top: (sp.y - 1) * 34,
-              ...furnitureFlipStyle(sp.flpo, sp.flpv),
-            }}
-            alt="Secret Passage"
-          />
+            className="dungeon-board-special-tile-passage pointer-events-none absolute flex items-center justify-center"
+            style={{ left: (sp.x - 1) * 34, top: (sp.y - 1) * 34, width: 34, height: 34 }}
+          >
+            <img
+              src={`/img/cell/${sp.img}`}
+              className="max-h-[34px] max-w-[34px] drop-shadow-md"
+              style={furnitureFlipStyle(sp.flpo, sp.flpv)}
+              alt="Secret Passage"
+            />
+          </div>
         ))}
 
         {/* Treasures */}
         {treasures?.map((t, i) => (
-          <img key={`trs-${i}`} src={`/img/cell/${t.img}`} className="absolute drop-shadow-md" style={{ left: (t.x - 1) * 34, top: (t.y - 1) * 34 }} alt="Treasure" />
+          <div
+            key={`trs-${i}`}
+            className="dungeon-board-special-tile-treasure pointer-events-none absolute flex items-center justify-center"
+            style={{ left: (t.x - 1) * 34, top: (t.y - 1) * 34, width: 34, height: 34 }}
+          >
+            <img src={`/img/cell/${t.img}`} className="max-h-[34px] max-w-[34px] drop-shadow-md" alt="Treasure" />
+          </div>
         ))}
 
         {/* Traps */}
@@ -328,7 +377,15 @@ export default function DungeonBoard({
           else if (t.tipo === 2) src = "/img/cell/lancia.png";
           else if (t.tipo === 3) src = "/img/cell/rocciacad.png";
           if (!src) return null;
-          return <img key={`trp-${i}`} src={src} className="absolute drop-shadow-md" style={{ left: (t.x - 1) * 34, top: (t.y - 1) * 34 }} alt="Trap" />;
+          return (
+            <div
+              key={`trp-${i}`}
+              className="dungeon-board-special-tile-trap pointer-events-none absolute flex items-center justify-center"
+              style={{ left: (t.x - 1) * 34, top: (t.y - 1) * 34, width: 34, height: 34 }}
+            >
+              <img src={src} className="max-h-[34px] max-w-[34px] drop-shadow-md" alt="Trap" />
+            </div>
+          );
         })}
 
         {/* Script Images */}
