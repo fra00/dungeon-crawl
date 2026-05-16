@@ -46,6 +46,11 @@ body {
   grid-area: board;
   min-height: 0;
   min-width: 0;
+  /* Riserva spazio in basso pari all'altezza della barra azioni
+     (misurata via ResizeObserver in DungeonGameShell). Così il
+     contenuto del tabellone non finisce mai coperto dalla barra
+     fixed su mobile. */
+  padding-bottom: var(--dungeon-actions-h, 0px);
 }
 
 .dungeon-board-slot {
@@ -66,6 +71,25 @@ body {
 .dungeon-shell-actions {
   grid-area: actions;
   padding-bottom: max(0px, env(safe-area-inset-bottom));
+}
+
+/* Su mobile la barra URL può comparire/scomparire e mangiare la
+   fascia inferiore del viewport, nascondendo la barra azioni. La
+   ancoriamo al fondo con position: fixed così resta sempre visibile;
+   il padding del tabellone (var --dungeon-actions-h) garantisce che
+   non si sovrapponga al contenuto del board. */
+@media (max-width: 767px) {
+  .dungeon-shell-actions {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    padding-left: max(0.25rem, env(safe-area-inset-left));
+    padding-right: max(0.25rem, env(safe-area-inset-right));
+    padding-bottom: max(0.25rem, env(safe-area-inset-bottom));
+    box-shadow: 0 -6px 14px -6px rgba(0, 0, 0, 0.85);
+  }
 }
 
 .dungeon-chrome-label {

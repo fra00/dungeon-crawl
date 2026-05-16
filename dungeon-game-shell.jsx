@@ -1,10 +1,37 @@
-import React, { useRef } from "react";
+import React, { useRef, useEffect } from "react";
 import { useBoardViewport } from "./use-board-viewport.js";
 import {
   DUNGEON_BOARD_CHROME_WIDTH,
   DUNGEON_BOARD_CHROME_HEIGHT,
 } from "./dungeon-board-constants.js";
 import DungeonBoardZoomControls from "./dungeon-board-zoom-controls.jsx";
+
+/** Misura l'altezza della barra azioni e la espone come CSS var --dungeon-actions-h. */
+function useActionsHeightVar(ref, shellRef) {
+  useEffect(() => {
+    const el = ref?.current;
+    const shell = shellRef?.current;
+    if (!el || !shell) return;
+
+    const apply = () => {
+      const h = el.getBoundingClientRect().height;
+      shell.style.setProperty("--dungeon-actions-h", `${Math.ceil(h)}px`);
+    };
+
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    window.addEventListener("resize", apply);
+    window.visualViewport?.addEventListener("resize", apply);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", apply);
+      window.visualViewport?.removeEventListener("resize", apply);
+      shell.style.removeProperty("--dungeon-actions-h");
+    };
+  }, [ref, shellRef]);
+}
 
 /**
  * Layout compatto: top bar + stats + board (fit massimo + zoom opzionale) + azioni.
@@ -17,6 +44,8 @@ export default function DungeonGameShell({
   overlays = null,
 }) {
   const boardSlotRef = useRef(null);
+  const actionsRef = useRef(null);
+  const shellRef = useRef(null);
   const {
     displayScale,
     zoomStepIndex,
@@ -29,13 +58,15 @@ export default function DungeonGameShell({
     resetZoom,
   } = useBoardViewport(boardSlotRef);
 
+  useActionsHeightVar(actionsRef, shellRef);
+
   const scaledW = DUNGEON_BOARD_CHROME_WIDTH * displayScale;
   const scaledH = DUNGEON_BOARD_CHROME_HEIGHT * displayScale;
   const zoomLabel =
     zoomStepIndex === 0 ? null : `${Math.round(zoomMultiplier * 100)}%`;
 
   return (
-    <div className="dungeon-shell game-viewport relative overflow-hidden">
+    <div ref={shellRef} className="dungeon-shell game-viewport relative overflow-hidden">
       <div className="dungeon-shell-grid h-full w-full min-h-0">
         <header className="dungeon-shell-top min-h-0 shrink-0">{topBar}</header>
         <aside className="dungeon-shell-stats min-h-0 min-w-0">{heroHud}</aside>
@@ -77,7 +108,7 @@ export default function DungeonGameShell({
             zoomLabel={zoomLabel}
           />
         </div>
-        <footer className="dungeon-shell-actions min-h-0 z-30 shrink-0">{actions}</footer>
+        <footer ref={actionsRef} className="dungeon-shell-actions min-h-0 z-30 shrink-0">{actions}</footer>
       </div>
       {overlays}
     </div>
