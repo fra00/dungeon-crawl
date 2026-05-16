@@ -50,12 +50,13 @@ function StatBarRow({
 }
 
 /**
- * Colonna stats sempre visibile (stretto, mobile = desktop).
+ * Colonna sinistra: stats (scroll) + azioni di turno in basso.
  */
 export default function DungeonHeroHud({
   currentHero,
   currentHeroStats = null,
   chromeDisabled = false,
+  sidebarActions = null,
 }) {
   if (!currentHero) return null;
 
@@ -72,44 +73,47 @@ export default function DungeonHeroHud({
 
   return (
     <aside
-      className={`dungeon-hero-stats flex flex-col h-full min-h-0 w-[2.75rem] sm:w-[3.25rem] shrink-0 bg-stone-800/95 border-r border-amber-700/30 text-stone-200 font-serif overflow-y-auto custom-scrollbar ${
+      className={`dungeon-hero-column flex flex-col h-full min-h-0 w-[3rem] sm:w-[3.25rem] shrink-0 bg-stone-800/95 border-r border-amber-700/30 text-stone-200 font-serif ${
         chromeDisabled ? "opacity-55 pointer-events-none select-none" : ""
       }`}
       data-testid="dungeon-hero-stats"
       aria-disabled={chromeDisabled || undefined}
     >
-      <StatRow icon="⚔️" label="Att" value={attack} />
-      <StatRow icon="🛡️" label="Dif" value={defense} />
-      <StatBarRow
-        icon="🧠"
-        label="Men"
-        current={mind}
-        maxBase={maxMind}
-        valueColor="text-blue-400"
-        barClass="bg-gradient-to-r from-indigo-600 to-blue-400"
-      />
-      <StatBarRow
-        icon="❤️"
-        label="Sal"
-        current={body}
-        maxBase={maxBody}
-        valueColor="text-red-400"
-        barClass="bg-gradient-to-r from-red-800 to-red-500"
-      />
-      <StatRow icon="🪙" label="Oro" value={gold} valueColor="text-yellow-400" />
-      {activeEffects.length > 0 && (
-        <div className="p-0.5 flex flex-col gap-0.5 items-center">
-          {activeEffects.slice(0, 3).map((effect, idx) => (
-            <span
-              key={idx}
-              className="bg-purple-900/60 text-purple-200 px-0.5 rounded text-[7px] leading-tight text-center max-w-full truncate"
-              title={effect}
-            >
-              {effect.slice(0, 4)}
-            </span>
-          ))}
-        </div>
-      )}
+      <div className="dungeon-hero-stats flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+        <StatRow icon="⚔️" label="Att" value={attack} />
+        <StatRow icon="🛡️" label="Dif" value={defense} />
+        <StatBarRow
+          icon="🧠"
+          label="Men"
+          current={mind}
+          maxBase={maxMind}
+          valueColor="text-blue-400"
+          barClass="bg-gradient-to-r from-indigo-600 to-blue-400"
+        />
+        <StatBarRow
+          icon="❤️"
+          label="Sal"
+          current={body}
+          maxBase={maxBody}
+          valueColor="text-red-400"
+          barClass="bg-gradient-to-r from-red-800 to-red-500"
+        />
+        <StatRow icon="🪙" label="Oro" value={gold} valueColor="text-yellow-400" />
+        {activeEffects.length > 0 && (
+          <div className="p-0.5 flex flex-col gap-0.5 items-center">
+            {activeEffects.slice(0, 3).map((effect, idx) => (
+              <span
+                key={idx}
+                className="bg-purple-900/60 text-purple-200 px-0.5 rounded text-[7px] leading-tight text-center max-w-full truncate"
+                title={effect}
+              >
+                {effect.slice(0, 4)}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+      {sidebarActions}
     </aside>
   );
 }

@@ -11,7 +11,8 @@ import { PageNavigationEnum } from './domain-core';
 import { isEditorPlaytestActive, setEditorPlaytestActive } from './editor/editor-playtest-session.js';
 import DungeonBoard from './dungeon-board';
 import DungeonGameShell from './dungeon-game-shell.jsx';
-import DungeonActionBar from './dungeon-action-bar.jsx';
+import DungeonSidebarActions from './dungeon-sidebar-actions.jsx';
+import DungeonBoardFabs from './dungeon-board-fabs.jsx';
 import DungeonHeroHud from './dungeon-hero-hud.jsx';
 import DungeonTopBar from './dungeon-top-bar.jsx';
 import DungeonHeroOrder from './dungeon-hero-order';
@@ -659,28 +660,33 @@ export default function Dungeon({
             ? hooksTurnLogic.reachableMovementCells
             : [];
 
-    const actionBarProps = {
-        currentHero: hudHero,
-        currentHeroStats,
-        movementPoints: hooksTurnLogic.movementPoints,
+    const isDoorOpenable =
+        hooksTurnLogic.canOpenDoor === true ||
+        hooksTurnLogic.canOpenDoor?.found === true;
+    const isActionDisabled =
+        uiChromeDisabled ||
+        turnPhase?.HasPerformedAction === true ||
+        hooksTurnLogic.isMoving ||
+        !!targetingSpell;
+
+    const sidebarActionsProps = {
         turnPhase,
         chromeDisabled: uiChromeDisabled,
-        canOpenDoor: !!hooksTurnLogic.canOpenDoor,
         isTargeting: !!targetingSpell,
         isMoving: hooksTurnLogic.isMoving,
+        canUseMagic,
+        magicDisabled,
+        isDoorOpenable,
+        canDisarmTrap,
+        isActionDisabled,
         onEndTurn: hooksTurnLogic.endTurn,
         onSearchPassages: hooksSecretPassages.searchPassages,
         onSearchTreasure: hooksTreasure.searchTreasure,
         onSearchTraps: hooksTraps.searchTraps,
-        canDisarmTrap,
         onDisarmTrap: handleDisarmTrap,
-        onOpenMagic: () => setIsSpellCastModalOpen(true),
-        onOpenInventory: () => setIsInventoryOpen(true),
-        onCancelTargeting: cancelTargeting,
         onOpenDoor: hooksTurnLogic.handleOpenDoor,
-        audioMuted,
-        onToggleAudioMuted: toggleAudioMuted,
-        onExitMap: handleExitMapFromOptions,
+        onOpenMagic: () => setIsSpellCastModalOpen(true),
+        onCancelTargeting: cancelTargeting,
     };
 
     return (
@@ -708,6 +714,11 @@ export default function Dungeon({
                         currentHero={hudHero}
                         currentHeroStats={currentHeroStats}
                         chromeDisabled={uiChromeDisabled}
+                        sidebarActions={
+                            showActionBar ? (
+                                <DungeonSidebarActions {...sidebarActionsProps} />
+                            ) : null
+                        }
                     />
                 ) : null
             }
@@ -742,7 +753,20 @@ export default function Dungeon({
 
             </div>
             }
-            actions={showActionBar ? <DungeonActionBar {...actionBarProps} /> : null}
+            boardOverlays={
+                showActionBar ? (
+                    <DungeonBoardFabs
+                        chromeDisabled={uiChromeDisabled}
+                        isTargeting={!!targetingSpell}
+                        isDoorOpenable={isDoorOpenable}
+                        canDisarmTrap={canDisarmTrap}
+                        isActionDisabled={isActionDisabled}
+                        onOpenDoor={hooksTurnLogic.handleOpenDoor}
+                        onDisarmTrap={handleDisarmTrap}
+                        onCancelTargeting={cancelTargeting}
+                    />
+                ) : null
+            }
             overlays={
                 <>
             {isMissionInitialized &&

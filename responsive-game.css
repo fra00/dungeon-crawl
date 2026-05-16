@@ -18,18 +18,17 @@ body {
   padding-bottom: max(0.125rem, env(safe-area-inset-bottom));
 }
 
-/* HUD compatto — stesso layout mobile e desktop */
+/* HUD compatto — top + colonna sinistra + board */
 .dungeon-shell-grid {
   display: grid;
   width: 100%;
   height: 100%;
   min-height: 0;
   grid-template-columns: auto 1fr;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto 1fr;
   grid-template-areas:
     "top top"
-    "stats board"
-    "actions actions";
+    "stats board";
 }
 
 .dungeon-shell-top {
@@ -40,17 +39,14 @@ body {
   grid-area: stats;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  min-width: 0;
 }
 
 .dungeon-board-frame {
   grid-area: board;
   min-height: 0;
   min-width: 0;
-  /* Riserva spazio in basso pari all'altezza della barra azioni
-     (misurata via ResizeObserver in DungeonGameShell). Così il
-     contenuto del tabellone non finisce mai coperto dalla barra
-     fixed su mobile. */
-  padding-bottom: var(--dungeon-actions-h, 0px);
 }
 
 .dungeon-board-slot {
@@ -68,27 +64,24 @@ body {
   border-radius: 3px;
 }
 
-.dungeon-shell-actions {
-  grid-area: actions;
-  padding-bottom: max(0px, env(safe-area-inset-bottom));
+@keyframes dungeon-action-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 10px 3px rgba(251, 191, 36, 0.55);
+  }
 }
 
-/* Su mobile la barra URL può comparire/scomparire e mangiare la
-   fascia inferiore del viewport, nascondendo la barra azioni. La
-   ancoriamo al fondo con position: fixed così resta sempre visibile;
-   il padding del tabellone (var --dungeon-actions-h) garantisce che
-   non si sovrapponga al contenuto del board. */
-@media (max-width: 767px) {
-  .dungeon-shell-actions {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 40;
-    padding-left: max(0.25rem, env(safe-area-inset-left));
-    padding-right: max(0.25rem, env(safe-area-inset-right));
-    padding-bottom: max(0.25rem, env(safe-area-inset-bottom));
-    box-shadow: 0 -6px 14px -6px rgba(0, 0, 0, 0.85);
+.dungeon-action-menu-trigger--hint {
+  animation: dungeon-action-pulse 2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dungeon-action-menu-trigger--hint {
+    animation: none;
+    box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.45);
   }
 }
 
@@ -106,4 +99,25 @@ body {
 
 .dungeon-notification-anchor {
   top: calc(var(--dungeon-top-h, 2.75rem) + 0.35rem);
+}
+
+@keyframes dungeon-fab-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(74, 222, 128, 0.15);
+  }
+}
+
+.dungeon-board-fab--pulse {
+  animation: dungeon-fab-pulse 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dungeon-board-fab--pulse {
+    animation: none;
+    box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.35);
+  }
 }
