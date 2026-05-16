@@ -1,7 +1,7 @@
 import React from "react";
 
 const ctl =
-  "w-8 h-8 flex items-center justify-center rounded border border-amber-700/50 bg-stone-900/90 text-amber-200 text-lg font-bold shadow-md hover:bg-stone-800 active:scale-95 disabled:opacity-35 disabled:pointer-events-none";
+  "w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded border border-amber-700/50 bg-stone-800/90 text-amber-200 text-base sm:text-lg font-bold shadow-inner hover:bg-stone-700 active:scale-95 disabled:opacity-35 disabled:pointer-events-none";
 
 export default function DungeonBoardZoomControls({
   canZoomIn,
@@ -13,7 +13,7 @@ export default function DungeonBoardZoomControls({
 }) {
   return (
     <div
-      className="dungeon-board-zoom-controls flex flex-col items-center gap-1 pointer-events-auto"
+      className="dungeon-board-zoom-controls flex flex-row items-center gap-0.5 pointer-events-auto"
       aria-label="Zoom tabellone"
     >
       {zoomLabel != null && (

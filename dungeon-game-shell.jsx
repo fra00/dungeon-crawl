@@ -37,53 +37,52 @@ export default function DungeonGameShell({
   return (
     <div className="dungeon-shell game-viewport relative overflow-hidden">
       <div className="dungeon-shell-grid h-full w-full min-h-0">
-        <header className="dungeon-shell-top min-h-0 shrink-0">{topBar}</header>
+        <header className="dungeon-shell-top flex items-center gap-1 min-h-0 shrink-0">
+          <div className="flex-1 min-w-0 min-h-0">{topBar}</div>
+          {board != null && (
+            <div className="dungeon-shell-top-zoom shrink-0 pr-1 sm:pr-1.5 border-l border-amber-800/40 pl-1">
+              <DungeonBoardZoomControls
+                canZoomIn={canZoomIn}
+                canZoomOut={canZoomOut}
+                onZoomIn={zoomIn}
+                onZoomOut={zoomOut}
+                onReset={resetZoom}
+                zoomLabel={zoomLabel}
+              />
+            </div>
+          )}
+        </header>
         <aside className="dungeon-shell-stats min-h-0 min-w-0">{heroHud}</aside>
-        <div className="dungeon-board-zone flex min-h-0 min-w-0 overflow-hidden">
-          <div className="dungeon-board-frame relative flex-1 min-h-0 min-w-0 overflow-hidden">
-            <main
-              ref={boardSlotRef}
-              id="board-slot"
-              className={`dungeon-board-slot h-full w-full touch-pan-x touch-pan-y ${
-                isPannable
-                  ? "overflow-auto"
-                  : "overflow-hidden flex items-center justify-center"
+        <div className="dungeon-board-frame relative min-h-0 min-w-0 overflow-hidden">
+          <main
+            ref={boardSlotRef}
+            id="board-slot"
+            className={`dungeon-board-slot h-full w-full touch-pan-x touch-pan-y ${
+              isPannable
+                ? "overflow-auto"
+                : "overflow-hidden flex items-center justify-center"
+            }`}
+            data-pannable={isPannable ? "true" : "false"}
+          >
+            <div
+              className={`dungeon-board-scaled relative shrink-0 ${
+                isPannable ? "" : "mx-auto"
               }`}
-              data-pannable={isPannable ? "true" : "false"}
+              style={{ width: scaledW, height: scaledH }}
             >
               <div
-                className={`dungeon-board-scaled relative shrink-0 ${
-                  isPannable ? "" : "mx-auto"
-                }`}
-                style={{ width: scaledW, height: scaledH }}
+                style={{
+                  width: DUNGEON_BOARD_CHROME_WIDTH,
+                  height: DUNGEON_BOARD_CHROME_HEIGHT,
+                  transform: `scale(${displayScale})`,
+                  transformOrigin: "top left",
+                }}
               >
-                <div
-                  style={{
-                    width: DUNGEON_BOARD_CHROME_WIDTH,
-                    height: DUNGEON_BOARD_CHROME_HEIGHT,
-                    transform: `scale(${displayScale})`,
-                    transformOrigin: "top left",
-                  }}
-                >
-                  {board}
-                </div>
+                {board}
               </div>
-            </main>
-            {boardOverlays}
-          </div>
-          <aside
-            className="dungeon-board-zoom-rail shrink-0 flex flex-col items-center justify-center gap-1 px-0.5 py-2 border-l border-amber-800/35 bg-stone-900/50"
-            aria-label="Controlli zoom"
-          >
-            <DungeonBoardZoomControls
-              canZoomIn={canZoomIn}
-              canZoomOut={canZoomOut}
-              onZoomIn={zoomIn}
-              onZoomOut={zoomOut}
-              onReset={resetZoom}
-              zoomLabel={zoomLabel}
-            />
-          </aside>
+            </div>
+          </main>
+          {boardOverlays}
         </div>
       </div>
       {overlays}
