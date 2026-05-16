@@ -118,7 +118,7 @@ body {
     min-height: 100svh;
     --dungeon-mobile-bottom-inset: max(
       2.25rem,
-      calc(env(safe-area-inset-bottom, 0px) + 1.0rem)
+      calc(env(safe-area-inset-bottom, 0px) + 0.125rem)
     );
     padding-bottom: var(--dungeon-mobile-bottom-inset);
   }
