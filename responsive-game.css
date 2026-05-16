@@ -108,31 +108,18 @@ body {
 }
 
 /*
- * Mobile: barra URL / barra gesture in basso copre i controlli.
- * Riserviamo spazio sotto sidebar azioni e FAB.
+ * Mobile: altezza viewport stabile. Solo safe-area sulle azioni in basso
+ * (niente padding extra sul viewport: creava la fascia vuota sotto il gioco).
  */
 @media (max-width: 767px) {
   .game-viewport {
-    /* svh = viewport con barra URL visibile (evita taglio sotto) */
     height: 100svh;
     min-height: 100svh;
-    --dungeon-mobile-bottom-inset: max(
-      2.25rem,
-      calc(env(safe-area-inset-bottom, 0px) + 0.125rem)
-    );
-    padding-bottom: var(--dungeon-mobile-bottom-inset);
-  }
-
-  .dungeon-hero-column {
-    padding-bottom: 0.25rem;
+    padding-bottom: max(0.125rem, env(safe-area-inset-bottom));
   }
 
   .dungeon-sidebar-actions {
-    margin-bottom: 0.15rem;
-  }
-
-  .dungeon-board-fabs {
-    bottom: calc(0.75rem + var(--dungeon-mobile-bottom-inset, 2.25rem));
+    padding-bottom: max(0.25rem, env(safe-area-inset-bottom, 0px));
   }
 }
 
