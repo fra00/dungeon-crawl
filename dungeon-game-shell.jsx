@@ -39,44 +39,51 @@ export default function DungeonGameShell({
       <div className="dungeon-shell-grid h-full w-full min-h-0">
         <header className="dungeon-shell-top min-h-0 shrink-0">{topBar}</header>
         <aside className="dungeon-shell-stats min-h-0 min-w-0">{heroHud}</aside>
-        <div className="dungeon-board-frame relative min-h-0 min-w-0 overflow-hidden">
-          <main
-            ref={boardSlotRef}
-            id="board-slot"
-            className={`dungeon-board-slot h-full w-full touch-pan-x touch-pan-y ${
-              isPannable
-                ? "overflow-auto"
-                : "overflow-hidden flex items-center justify-center"
-            }`}
-            data-pannable={isPannable ? "true" : "false"}
-          >
-            <div
-              className={`dungeon-board-scaled relative shrink-0 ${
-                isPannable ? "" : "mx-auto"
+        <div className="dungeon-board-zone flex min-h-0 min-w-0 overflow-hidden">
+          <div className="dungeon-board-frame relative flex-1 min-h-0 min-w-0 overflow-hidden">
+            <main
+              ref={boardSlotRef}
+              id="board-slot"
+              className={`dungeon-board-slot h-full w-full touch-pan-x touch-pan-y ${
+                isPannable
+                  ? "overflow-auto"
+                  : "overflow-hidden flex items-center justify-center"
               }`}
-              style={{ width: scaledW, height: scaledH }}
+              data-pannable={isPannable ? "true" : "false"}
             >
               <div
-                style={{
-                  width: DUNGEON_BOARD_CHROME_WIDTH,
-                  height: DUNGEON_BOARD_CHROME_HEIGHT,
-                  transform: `scale(${displayScale})`,
-                  transformOrigin: "top left",
-                }}
+                className={`dungeon-board-scaled relative shrink-0 ${
+                  isPannable ? "" : "mx-auto"
+                }`}
+                style={{ width: scaledW, height: scaledH }}
               >
-                {board}
+                <div
+                  style={{
+                    width: DUNGEON_BOARD_CHROME_WIDTH,
+                    height: DUNGEON_BOARD_CHROME_HEIGHT,
+                    transform: `scale(${displayScale})`,
+                    transformOrigin: "top left",
+                  }}
+                >
+                  {board}
+                </div>
               </div>
-            </div>
-          </main>
-          <DungeonBoardZoomControls
-            canZoomIn={canZoomIn}
-            canZoomOut={canZoomOut}
-            onZoomIn={zoomIn}
-            onZoomOut={zoomOut}
-            onReset={resetZoom}
-            zoomLabel={zoomLabel}
-          />
-          {boardOverlays}
+            </main>
+            {boardOverlays}
+          </div>
+          <aside
+            className="dungeon-board-zoom-rail shrink-0 flex flex-col items-center justify-center gap-1 px-0.5 py-2 border-l border-amber-800/35 bg-stone-900/50"
+            aria-label="Controlli zoom"
+          >
+            <DungeonBoardZoomControls
+              canZoomIn={canZoomIn}
+              canZoomOut={canZoomOut}
+              onZoomIn={zoomIn}
+              onZoomOut={zoomOut}
+              onReset={resetZoom}
+              zoomLabel={zoomLabel}
+            />
+          </aside>
         </div>
       </div>
       {overlays}

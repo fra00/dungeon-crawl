@@ -43,10 +43,20 @@ body {
   min-width: 0;
 }
 
-.dungeon-board-frame {
+.dungeon-board-zone {
   grid-area: board;
   min-height: 0;
   min-width: 0;
+}
+
+.dungeon-board-frame {
+  min-height: 0;
+  min-width: 0;
+}
+
+.dungeon-board-zoom-rail {
+  width: 2.35rem;
+  min-width: 2.35rem;
 }
 
 .dungeon-board-slot {
@@ -111,8 +121,8 @@ body {
     height: 100svh;
     min-height: 100svh;
     --dungeon-mobile-bottom-inset: max(
-      3.25rem,
-      calc(env(safe-area-inset-bottom, 0px) + 2.5rem)
+      2.25rem,
+      calc(env(safe-area-inset-bottom, 0px) + 1.5rem)
     );
     padding-bottom: var(--dungeon-mobile-bottom-inset);
   }
@@ -125,12 +135,8 @@ body {
     margin-bottom: 0.15rem;
   }
 
-  .dungeon-board-zoom-controls {
-    bottom: calc(0.5rem + var(--dungeon-mobile-bottom-inset, 3.25rem)) !important;
-  }
-
   .dungeon-board-fabs {
-    bottom: calc(0.75rem + var(--dungeon-mobile-bottom-inset, 3.25rem));
+    bottom: calc(0.75rem + var(--dungeon-mobile-bottom-inset, 2.25rem));
   }
 }
 

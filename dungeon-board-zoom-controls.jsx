@@ -13,11 +13,11 @@ export default function DungeonBoardZoomControls({
 }) {
   return (
     <div
-      className="dungeon-board-zoom-controls absolute bottom-2 right-2 z-30 flex items-center gap-0.5 pointer-events-auto"
+      className="dungeon-board-zoom-controls flex flex-col items-center gap-1 pointer-events-auto"
       aria-label="Zoom tabellone"
     >
       {zoomLabel != null && (
-        <span className="text-[10px] text-stone-400 px-1 tabular-nums hidden sm:inline">
+        <span className="text-[9px] text-stone-400 tabular-nums leading-none text-center">
           {zoomLabel}
         </span>
       )}
