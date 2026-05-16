@@ -8,6 +8,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { cellIsOpenDoorTile } from './dungeon-melee-doorway.js';
+import { startFootstepsLoop, stopFootstepsLoop } from './dungeon-audio.js';
 
 export function useMonsterAI(config) {
   const {
@@ -124,6 +125,7 @@ export function useMonsterAI(config) {
 
     const initialMonsters = gameSessionRef.current?.monsters || [];
 
+    try {
     for (const initialMonster of initialMonsters) {
       // Fetch the freshest state for the current monster
       const currentSession = gameSessionRef.current;
@@ -216,6 +218,9 @@ export function useMonsterAI(config) {
             movementPath.push(step);
             if (step.x === targetCell.x && step.y === targetCell.y) break;
           }
+          const stepMs = Math.min(300 * Math.max(1, movementPath.length - 1), 1500);
+          startFootstepsLoop();
+          await sleep(stepMs);
           sessionManager?.updateMonsterState(
             monster.id,
             targetCell.x,
@@ -223,6 +228,7 @@ export function useMonsterAI(config) {
             statusesToRemove,
             { movementPath }
           );
+          stopFootstepsLoop();
           currentMonsterX = targetCell.x;
           currentMonsterY = targetCell.y;
           await sleep(400);
@@ -253,12 +259,15 @@ export function useMonsterAI(config) {
     }
 
     // End Phase
-    isTurnInProgressRef.current = false;
-    setIsMonsterTurnInProgress(false);
     sessionManager?.startNextHeroRound();
     
     if (onNotify) {
       onNotify("Nuovo Turno! Tocca agli eroi.");
+    }
+    } finally {
+      stopFootstepsLoop();
+      isTurnInProgressRef.current = false;
+      setIsMonsterTurnInProgress(false);
     }
 
   }, [onNotify, findNearestHero, isAdjacent, isOccupied, pathfinding, visibilityMap, sessionManager, heroStatsLogic, combatLogic, canMeleeAcrossCells]);

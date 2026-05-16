@@ -11,6 +11,7 @@ import { cellAllowsMapExit } from "./editor-map-model.js";
 import { cellIsOpenDoorTile, mergeOpenedDoorsAfterStep } from "./dungeon-melee-doorway.js";
 import { moveCurrentHeroInSession } from "./dungeon-script-runtime.js";
 import { truncateHeroPathForMonsterObstacles } from "./dungeon-hero-path-monsters.js";
+import { startFootstepsLoop, stopFootstepsLoop } from "./dungeon-audio.js";
 
 /** Per SFX/consumo arma: il bastone (diago) è corpo a corpo anche se distanza Manhattan = 2. */
 export function isHeroAttackRanged(dist, dx, dy, canAttackDiagonal) {
@@ -46,6 +47,8 @@ export function useTurnLogic({
   const previousObjectiveCompletedRef = useRef(false);
   /** Ritirata: conferma già data prima di entrare sulla cella scale (evita doppio dialog e loop). */
   const pendingStairsExitConfirmedRef = useRef(false);
+
+  useEffect(() => () => stopFootstepsLoop(), []);
 
   // -----------------------------------------------------------------------
   // Watchdog: mantiene `canOpenDoor` SEMPRE sincronizzato con la posizione
@@ -198,6 +201,7 @@ export function useTurnLogic({
       }
     }
 
+    stopFootstepsLoop();
     setTurnPhase({ HasMoved: false, HasPerformedAction: false, IsTurnFinished: false });
     setMovementPoints(null);
     setActivePath([]);
@@ -263,6 +267,7 @@ export function useTurnLogic({
   }, [gameSession, isMissionObjectiveCompleted, sessionManager, onNotify, endTurn]);
 
   const forceTurnExhausted = useCallback((positionOverride) => {
+    stopFootstepsLoop();
     setMovementPoints(0);
     setHoveredPath([]);
     setHoveredPathVariant(null);
@@ -421,6 +426,7 @@ export function useTurnLogic({
       setCanOpenDoor(null);
       setIsMoving(true);
       setActivePath([...pathToWalk]);
+      startFootstepsLoop();
       setHoveredPath([]);
       setHoveredPathVariant(null);
     } else {
@@ -736,6 +742,7 @@ export function useTurnLogic({
 
   useEffect(() => {
     if (activePath.length < 2) {
+      stopFootstepsLoop();
       if (isMoving) {
         setIsMoving(false);
         setActivePath([]);
@@ -753,6 +760,8 @@ export function useTurnLogic({
       }
       return;
     }
+
+    startFootstepsLoop();
 
     const timer = setTimeout(() => {
       const nextPos = activePath[1];
@@ -776,6 +785,7 @@ export function useTurnLogic({
             );
             setActivePath([{ x: oldPos.x, y: oldPos.y }]);
             setIsMoving(false);
+            stopFootstepsLoop();
             return;
           }
           pendingStairsExitConfirmedRef.current = true;
@@ -795,11 +805,12 @@ export function useTurnLogic({
         onNotify("Movimento interrotto: la casella è occupata da un mostro.");
         setActivePath([{ x: oldPos.x, y: oldPos.y }]);
         setIsMoving(false);
+        stopFootstepsLoop();
         return;
       }
 
       setMovementPoints(prev => (prev !== null ? prev - 1 : 0));
-      
+
       const oldVis = visibilityMap?.data?.find(c => c.x === oldPos.x && c.y === oldPos.y);
       const newVis = visibilityMap?.data?.find(c => c.x === nextPos.x && c.y === nextPos.y);
       const isDoor = gameSession?.currentMap?.porte?.some(p => p.x === nextPos.x && p.y === nextPos.y) || gameSession?.openedDoors?.includes(`${nextPos.x},${nextPos.y}`);
@@ -821,6 +832,7 @@ export function useTurnLogic({
         setActivePath([]);
         setMovementPoints(0);
         setTurnPhase(prev => ({ ...prev, HasMoved: true }));
+        stopFootstepsLoop();
         return;
       }
 

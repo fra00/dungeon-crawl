@@ -46,6 +46,7 @@ import {
     missionHeroesNeedSpellSelection,
     filterHeroesForSpellSelection
 } from './mission-party.js';
+import { playDungeonSfx, setDungeonAudioMuted, primeFootstepsAudio } from './dungeon-audio.js';
 
 const BACKGROUND_MUSIC_VOLUME = 0.25;
 const AUDIO_MUTED_STORAGE_KEY = 'dungeonAudioMuted';
@@ -88,7 +89,9 @@ export default function Dungeon({
         audio.loop = true;
         audio.volume = audioMuted ? 0 : BACKGROUND_MUSIC_VOLUME;
         bgMusicRef.current = audio;
-        audio.play().catch(() => {});
+        audio.play()
+            .then(() => primeFootstepsAudio())
+            .catch(() => {});
         return () => {
             audio.pause();
             audio.src = '';
@@ -96,6 +99,7 @@ export default function Dungeon({
     }, []);
 
     useEffect(() => {
+        setDungeonAudioMuted(audioMuted);
         if (bgMusicRef.current) {
             bgMusicRef.current.volume = audioMuted ? 0 : BACKGROUND_MUSIC_VOLUME;
         }
@@ -112,11 +116,6 @@ export default function Dungeon({
             return next;
         });
     }, []);
-
-    const playDungeonSfx = useCallback((src) => {
-        if (audioMuted) return;
-        new Audio(src).play().catch(() => {});
-    }, [audioMuted]);
 
     const hooksFogOfWar = useFogOfWar({ gameSession, staticVisibilityMap });
     const boardVisibilityMap = hooksFogOfWar.fogVisibilityMap;

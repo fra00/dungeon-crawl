@@ -11,6 +11,7 @@ import {
   applyMonsterDeathMissionScripts,
   flushMonsterDeathScriptSideEffects,
 } from './dungeon-monster-death-scripts.js';
+import { playSpellCastSfx } from './dungeon-audio.js';
 
 export function useMagicLogic({
   gameSession,
@@ -97,6 +98,8 @@ export function useMagicLogic({
         }
       }
     }
+
+    let spellCastSuccessfully = false;
 
     commitSessionUpdate((baseSession) => {
       let nextSession = {
@@ -333,6 +336,7 @@ export function useMagicLogic({
       }
 
       if (wasCastSuccessful) {
+        spellCastSuccessfully = true;
         sessionCurrentHero.availableSpells = sessionCurrentHero.availableSpells.filter(id => id !== spellId);
         onNotify?.(`${sessionCurrentHero.hero?.classe} lancia ${spell.nome}!`);
         return nextSession;
@@ -343,6 +347,10 @@ export function useMagicLogic({
         return baseSession;
       }
     });
+
+    if (spellCastSuccessfully) {
+      playSpellCastSfx();
+    }
 
     onActionDone?.();
 
