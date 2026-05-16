@@ -101,6 +101,39 @@ body {
   top: calc(var(--dungeon-top-h, 2.75rem) + 0.35rem);
 }
 
+/*
+ * Mobile: barra URL / barra gesture in basso copre i controlli.
+ * Riserviamo spazio sotto sidebar azioni, zoom e FAB.
+ */
+@media (max-width: 767px) {
+  .game-viewport {
+    /* svh = viewport con barra URL visibile (evita taglio sotto) */
+    height: 100svh;
+    min-height: 100svh;
+    --dungeon-mobile-bottom-inset: max(
+      3.25rem,
+      calc(env(safe-area-inset-bottom, 0px) + 2.5rem)
+    );
+    padding-bottom: var(--dungeon-mobile-bottom-inset);
+  }
+
+  .dungeon-hero-column {
+    padding-bottom: 0.25rem;
+  }
+
+  .dungeon-sidebar-actions {
+    margin-bottom: 0.15rem;
+  }
+
+  .dungeon-board-zoom-controls {
+    bottom: calc(0.5rem + var(--dungeon-mobile-bottom-inset, 3.25rem)) !important;
+  }
+
+  .dungeon-board-fabs {
+    bottom: calc(0.75rem + var(--dungeon-mobile-bottom-inset, 3.25rem));
+  }
+}
+
 @keyframes dungeon-fab-pulse {
   0%,
   100% {
