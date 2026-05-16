@@ -70,6 +70,27 @@ body {
   border-radius: 3px;
 }
 
+@keyframes dungeon-scroll-hint-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+.dungeon-board-scroll-hint {
+  animation: dungeon-scroll-hint-pulse 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dungeon-board-scroll-hint {
+    animation: none;
+    opacity: 0.75;
+  }
+}
+
 @keyframes dungeon-action-pulse {
   0%,
   100% {

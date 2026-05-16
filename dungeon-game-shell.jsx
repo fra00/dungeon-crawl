@@ -5,6 +5,7 @@ import {
   DUNGEON_BOARD_CHROME_HEIGHT,
 } from "./dungeon-board-constants.js";
 import DungeonBoardZoomControls from "./dungeon-board-zoom-controls.jsx";
+import DungeonBoardScrollHints from "./dungeon-board-scroll-hints.jsx";
 
 /**
  * Layout compatto: top bar + colonna stats/azioni + board (fit + zoom).
@@ -82,6 +83,7 @@ export default function DungeonGameShell({
               </div>
             </div>
           </main>
+          <DungeonBoardScrollHints boardSlotRef={boardSlotRef} isPannable={isPannable} />
           {boardOverlays}
         </div>
       </div>
