@@ -21,6 +21,7 @@ export default function DungeonActionBar(props) {
     canOpenDoor,
     isTargeting = false,
     isMoving = false,
+    chromeDisabled = false,
     onEndTurn,
     onSearchPassages,
     onSearchTreasure,
@@ -33,7 +34,8 @@ export default function DungeonActionBar(props) {
 
   const isDoorOpenable = canOpenDoor === true || canOpenDoor?.found === true;
   const hasPerformedAction = turnPhase?.HasPerformedAction === true;
-  const isActionDisabled = hasPerformedAction || isMoving || isTargeting;
+  const isActionDisabled =
+    chromeDisabled || hasPerformedAction || isMoving || isTargeting;
   const pm =
     movementPoints !== null && movementPoints !== undefined
       ? movementPoints
@@ -41,12 +43,15 @@ export default function DungeonActionBar(props) {
 
   return (
     <div
-      className="dungeon-action-bar flex flex-wrap items-stretch justify-center gap-1 p-1 sm:p-1.5 bg-stone-900/98 border-t border-amber-700/50 font-serif text-stone-200"
+      className={`dungeon-action-bar flex flex-wrap items-stretch justify-center gap-1 p-1 sm:p-1.5 bg-stone-900/98 border-t border-amber-700/50 font-serif text-stone-200 ${
+        chromeDisabled ? "opacity-55 pointer-events-none select-none" : ""
+      }`}
       data-testid="dungeon-action-bar"
+      aria-disabled={chromeDisabled || undefined}
     >
       <ActionButton
         onClick={onEndTurn}
-        disabled={isMoving}
+        disabled={chromeDisabled || isMoving}
         className="bg-red-900/90 hover:bg-red-800 border-red-700 text-red-100"
       >
         Fine

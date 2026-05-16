@@ -3,6 +3,7 @@ import {
   computeFitScale,
   loadStoredZoomStepIndex,
   saveZoomStepIndex,
+  getDefaultZoomStepIndex,
   BOARD_ZOOM_STORAGE_KEY,
   BOARD_ZOOM_STEPS,
 } from "../use-board-viewport.js";
@@ -41,7 +42,7 @@ describe("zoom localStorage", () => {
   });
 
   it("loads and saves zoom step index", () => {
-    expect(loadStoredZoomStepIndex()).toBe(0);
+    expect(loadStoredZoomStepIndex()).toBe(getDefaultZoomStepIndex());
     saveZoomStepIndex(2);
     expect(loadStoredZoomStepIndex()).toBe(2);
     expect(BOARD_ZOOM_STEPS[loadStoredZoomStepIndex()]).toBe(1.4);

@@ -55,6 +55,7 @@ function StatBarRow({
 export default function DungeonHeroHud({
   currentHero,
   currentHeroStats = null,
+  chromeDisabled = false,
 }) {
   if (!currentHero) return null;
 
@@ -71,8 +72,11 @@ export default function DungeonHeroHud({
 
   return (
     <aside
-      className="dungeon-hero-stats flex flex-col h-full min-h-0 w-[2.75rem] sm:w-[3.25rem] shrink-0 bg-stone-800/95 border-r border-amber-700/30 text-stone-200 font-serif overflow-y-auto custom-scrollbar"
+      className={`dungeon-hero-stats flex flex-col h-full min-h-0 w-[2.75rem] sm:w-[3.25rem] shrink-0 bg-stone-800/95 border-r border-amber-700/30 text-stone-200 font-serif overflow-y-auto custom-scrollbar ${
+        chromeDisabled ? "opacity-55 pointer-events-none select-none" : ""
+      }`}
       data-testid="dungeon-hero-stats"
+      aria-disabled={chromeDisabled || undefined}
     >
       <StatRow icon="⚔️" label="Att" value={attack} />
       <StatRow icon="🛡️" label="Dif" value={defense} />

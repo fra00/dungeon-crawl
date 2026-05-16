@@ -29,16 +29,28 @@ export function computeFitScale(availW, availH) {
   return cellPx / DUNGEON_CELL_SIZE;
 }
 
+export function isMobileViewport() {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(max-width: 639px)").matches;
+}
+
+export function getDefaultZoomStepIndex() {
+  if (isMobileViewport()) {
+    return BOARD_ZOOM_STEPS.length - 1;
+  }
+  return 0;
+}
+
 export function loadStoredZoomStepIndex() {
   try {
     const raw = localStorage.getItem(BOARD_ZOOM_STORAGE_KEY);
-    if (raw == null) return 0;
+    if (raw == null) return getDefaultZoomStepIndex();
     const n = parseInt(raw, 10);
     if (Number.isInteger(n) && n >= 0 && n < BOARD_ZOOM_STEPS.length) return n;
   } catch {
     /* ignore */
   }
-  return 0;
+  return getDefaultZoomStepIndex();
 }
 
 export function saveZoomStepIndex(index) {
@@ -121,7 +133,10 @@ export function useBoardPinchZoom(
  */
 export function useBoardViewport(boardSlotRef) {
   const [fitScale, setFitScale] = useState(1);
-  const [zoomStepIndex, setZoomStepIndex] = useState(loadStoredZoomStepIndex);
+  const [zoomStepIndex, setZoomStepIndex] = useState(() => {
+    if (isMobileViewport()) return BOARD_ZOOM_STEPS.length - 1;
+    return loadStoredZoomStepIndex();
+  });
 
   useEffect(() => {
     const el = boardSlotRef?.current;

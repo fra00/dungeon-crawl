@@ -63,7 +63,54 @@ export function usePathfinding({ gameSession, visibilityMap = null, foundPassage
         return [];
     }, [movementRules, foundPassages]);
 
+    /** Tutte le celle raggiungibili entro maxDepth passi (BFS). */
+    const getReachableCells = useCallback((startX, startY, maxDepth, excludeEntityId) => {
+        if (maxDepth == null || maxDepth <= 0) return [];
+
+        const directions = [
+            { dx: 0, dy: -1 },
+            { dx: 0, dy: 1 },
+            { dx: -1, dy: 0 },
+            { dx: 1, dy: 0 },
+        ];
+        const reachable = [];
+        const queue = [{ x: startX, y: startY, depth: 0 }];
+        const visited = new Set([`${startX},${startY}`]);
+
+        while (queue.length > 0) {
+            const current = queue.shift();
+            if (current.depth > 0) {
+                reachable.push({ x: current.x, y: current.y });
+            }
+            if (current.depth >= maxDepth) continue;
+
+            for (const dir of directions) {
+                const nx = current.x + dir.dx;
+                const ny = current.y + dir.dy;
+                const key = `${nx},${ny}`;
+                if (visited.has(key)) continue;
+                if (
+                    !movementRules.isWalkable(
+                        current.x,
+                        current.y,
+                        nx,
+                        ny,
+                        excludeEntityId,
+                        foundPassages
+                    )
+                ) {
+                    continue;
+                }
+                visited.add(key);
+                queue.push({ x: nx, y: ny, depth: current.depth + 1 });
+            }
+        }
+
+        return reachable;
+    }, [movementRules, foundPassages]);
+
     return {
-        calculatePath
+        calculatePath,
+        getReachableCells,
     };
 }

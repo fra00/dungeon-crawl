@@ -68,6 +68,7 @@ export default function DungeonBoard({
   onMonsterClick,
   hoveredPath = [],
   hoveredPathVariant = null,
+  movementReachableCells = [],
   secretPassages = [],
   treasures = [],
   triggeredTraps = [],
@@ -366,11 +367,18 @@ export default function DungeonBoard({
           const fog = isFogged(cell.x + 1, cell.y + 1);
           const isHovered = hoveredCell?.x === cell.x && hoveredCell?.y === cell.y;
           const inPath = hoveredPath?.some(p => p.x === cell.x + 1 && p.y === cell.y + 1);
+          const mapX = cell.x + 1;
+          const mapY = cell.y + 1;
+          const isReachable =
+            !fog &&
+            movementReachableCells?.some((p) => p.x === mapX && p.y === mapY);
           
           let highlightClass = "";
           
           if (inPath) {
             highlightClass = hoveredPathVariant === "valid" ? "bg-green-500/40" : "bg-red-500/40";
+          } else if (isReachable && !targetingSpell) {
+            highlightClass = "bg-emerald-500/30 ring-1 ring-inset ring-emerald-400/45";
           }
 
           if (targetingSpell && isHovered) {
@@ -549,6 +557,9 @@ export default function DungeonBoard({
               title={`${monsterName} - HP: ${hpDisplay} - Mind: ${mindDisplay}`}
             >
               <img src={`/img/mostri/${m.monster?.immagine}`} className={`max-w-[34px] drop-shadow-md ${effectClass}`} alt={monsterName} />
+              <div className="absolute -bottom-2 -right-2 bg-red-600 text-white text-[10px] font-bold px-1 rounded-full border border-white shadow-sm tabular-nums pointer-events-none">
+                {m.currentBody}
+              </div>
               {effectOverlay}
             </div>
           );

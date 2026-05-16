@@ -12,6 +12,7 @@ export default function DungeonTopBar({
   currentTurn = null,
   canUseMagic = false,
   magicDisabled = false,
+  chromeDisabled = false,
   onOpenInventory,
   onOpenMagic,
   audioMuted = false,
@@ -31,8 +32,12 @@ export default function DungeonTopBar({
       ? movementPoints
       : "—";
 
+  const shellClass = chromeDisabled
+    ? "dungeon-top-bar flex items-center gap-1.5 sm:gap-2 px-1.5 sm:px-2 py-1 min-h-[2.75rem] bg-stone-900/95 border-b border-amber-700/40 font-serif text-stone-200 shrink-0 opacity-55 pointer-events-none select-none"
+    : "dungeon-top-bar flex items-center gap-1.5 sm:gap-2 px-1.5 sm:px-2 py-1 min-h-[2.75rem] bg-stone-900/95 border-b border-amber-700/40 font-serif text-stone-200 shrink-0";
+
   return (
-    <div className="dungeon-top-bar flex items-center gap-1.5 sm:gap-2 px-1.5 sm:px-2 py-1 min-h-[2.75rem] bg-stone-900/95 border-b border-amber-700/40 font-serif text-stone-200 shrink-0">
+    <div className={shellClass} aria-disabled={chromeDisabled || undefined}>
       <div className="relative shrink-0">
         <button
           type="button"

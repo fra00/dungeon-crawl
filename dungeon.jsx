@@ -295,15 +295,52 @@ export default function Dungeon({
         monsterAIRef.current = hooksMonsterAI;
     }, [hooksMonsterAI]);
 
+    const lastHudHeroRef = useRef(null);
+
     const currentHero = useMemo(() => {
         return gameSession?.heroes?.find(
             h => h.turnOrder === gameSession.currentTurn && (h.currentBody || 0) > 0
         );
     }, [gameSession?.heroes, gameSession?.currentTurn]);
 
+    if (currentHero) {
+        lastHudHeroRef.current = currentHero;
+    }
+
+    const participatingHeroCount = useMemo(
+        () => (gameSession?.heroes || []).filter((h) => (h.turnOrder ?? 0) > 0).length,
+        [gameSession?.heroes]
+    );
+
+    const isMonsterPhase = useMemo(() => {
+        if (!gameSession?.isHeroOrderConfirmed || participatingHeroCount <= 0) {
+            return false;
+        }
+        return (gameSession.currentTurn ?? 0) > participatingHeroCount;
+    }, [
+        gameSession?.isHeroOrderConfirmed,
+        gameSession?.currentTurn,
+        participatingHeroCount,
+    ]);
+
+    const hudHero = currentHero ?? (isMonsterPhase ? lastHudHeroRef.current : null);
+
+    const [isCoarsePointer, setIsCoarsePointer] = useState(() => {
+        if (typeof window === 'undefined') return false;
+        return window.matchMedia('(pointer: coarse)').matches;
+    });
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const mq = window.matchMedia('(pointer: coarse)');
+        const onChange = () => setIsCoarsePointer(mq.matches);
+        mq.addEventListener('change', onChange);
+        return () => mq.removeEventListener('change', onChange);
+    }, []);
+
     const currentHeroStats = useMemo(() => {
-        return currentHero ? hooksHeroStats.calculateStats(currentHero) : null;
-    }, [currentHero, hooksHeroStats]);
+        return hudHero ? hooksHeroStats.calculateStats(hudHero) : null;
+    }, [hudHero, hooksHeroStats]);
 
     const missionObjectiveCompleted = hooksTurnLogic.isMissionObjectiveCompleted;
 
@@ -459,16 +496,13 @@ export default function Dungeon({
             return;
         }
 
-        const participatingHeroCount = (gameSession.heroes || []).filter(
-            (h) => (h.turnOrder ?? 0) > 0
-        ).length;
         if (
             participatingHeroCount > 0 &&
             gameSession.currentTurn > participatingHeroCount
         ) {
             hooksMonsterAI.runMonsterTurn();
         }
-    }, [gameSession?.currentTurn, isMissionInitialized, gameSession?.isHeroOrderConfirmed, gameSession?.heroes, hooksTurnLogic, missionObjectiveCompleted, leaveDungeonAfterRetreat, hooksMonsterAI]);
+    }, [gameSession?.currentTurn, isMissionInitialized, gameSession?.isHeroOrderConfirmed, gameSession?.heroes, participatingHeroCount, hooksTurnLogic, missionObjectiveCompleted, leaveDungeonAfterRetreat, hooksMonsterAI]);
 
     const handleGameOverExit = useCallback(() => {
         setIsGameOverOpen(false);
@@ -508,6 +542,9 @@ export default function Dungeon({
     }, [staticSpells, currentHero, hooksMagicLogic]);
 
     const handleBoardClick = useCallback((x, y) => {
+        if (isMonsterPhase || hooksMonsterAI.isMonsterTurnInProgress) {
+            return;
+        }
         if (targetingSpell) {
             if (!currentHero) {
                 setNotificationMessage("Nessun eroe attivo disponibile.");
@@ -532,9 +569,12 @@ export default function Dungeon({
         } else {
             hooksTurnLogic.handleBoardClick(x, y);
         }
-    }, [targetingSpell, currentHero, hooksMagicLogic, gameSession, hooksTurnLogic]);
+    }, [targetingSpell, currentHero, hooksMagicLogic, gameSession, hooksTurnLogic, isMonsterPhase, hooksMonsterAI.isMonsterTurnInProgress]);
 
     const handleMonsterClick = useCallback((monsterId) => {
+        if (isMonsterPhase || hooksMonsterAI.isMonsterTurnInProgress) {
+            return;
+        }
         if (targetingItem) {
             if (!currentHero) {
                 setNotificationMessage("Nessun eroe attivo disponibile.");
@@ -565,7 +605,7 @@ export default function Dungeon({
         } else {
             hooksTurnLogic.handleMonsterClick(monsterId);
         }
-    }, [targetingItem, targetingSpell, currentHero, hooksItemLogic, gameSession, hooksMagicLogic, hooksTurnLogic]);
+    }, [targetingItem, targetingSpell, currentHero, hooksItemLogic, gameSession, hooksMagicLogic, hooksTurnLogic, isMonsterPhase, hooksMonsterAI.isMonsterTurnInProgress]);
 
     const cancelTargeting = useCallback(() => {
         setTargetingSpell(null);
@@ -598,24 +638,34 @@ export default function Dungeon({
 
     const showHeroHud =
         gameSession?.isHeroOrderConfirmed &&
-        currentHero &&
-        currentHero.currentBody > 0;
+        hudHero &&
+        hudHero.currentBody > 0;
 
-    const showActionBar = showHeroHud && !currentHero.isEscaped;
+    const showActionBar = showHeroHud && !hudHero.isEscaped;
 
-    const heroClassKey = currentHero?.hero?.classe?.toLowerCase() || '';
+    const uiChromeDisabled =
+        isMonsterPhase || hooksMonsterAI.isMonsterTurnInProgress;
+
+    const heroClassKey = hudHero?.hero?.classe?.toLowerCase() || '';
     const canUseMagic = ['mago', 'elfo'].includes(heroClassKey);
     const turnPhase = hooksTurnLogic.turnPhase;
     const magicDisabled =
+        uiChromeDisabled ||
         turnPhase?.HasPerformedAction === true ||
         hooksTurnLogic.isMoving ||
         !!targetingSpell;
 
+    const movementReachableCells =
+        isCoarsePointer && !uiChromeDisabled && !targetingSpell && !targetingItem
+            ? hooksTurnLogic.reachableMovementCells
+            : [];
+
     const actionBarProps = {
-        currentHero,
+        currentHero: hudHero,
         currentHeroStats,
         movementPoints: hooksTurnLogic.movementPoints,
         turnPhase,
+        chromeDisabled: uiChromeDisabled,
         canOpenDoor: !!hooksTurnLogic.canOpenDoor,
         isTargeting: !!targetingSpell,
         isMoving: hooksTurnLogic.isMoving,
@@ -639,11 +689,12 @@ export default function Dungeon({
             topBar={
                 showHeroHud ? (
                     <DungeonTopBar
-                        currentHero={currentHero}
+                        currentHero={hudHero}
                         movementPoints={hooksTurnLogic.movementPoints}
                         currentTurn={gameSession?.currentTurn}
                         canUseMagic={canUseMagic}
                         magicDisabled={magicDisabled}
+                        chromeDisabled={uiChromeDisabled}
                         onOpenInventory={() => setIsInventoryOpen(true)}
                         onOpenMagic={() => setIsSpellCastModalOpen(true)}
                         audioMuted={audioMuted}
@@ -655,8 +706,9 @@ export default function Dungeon({
             heroHud={
                 showHeroHud ? (
                     <DungeonHeroHud
-                        currentHero={currentHero}
+                        currentHero={hudHero}
                         currentHeroStats={currentHeroStats}
+                        chromeDisabled={uiChromeDisabled}
                     />
                 ) : null
             }
@@ -679,6 +731,7 @@ export default function Dungeon({
                     onMonsterClick={handleMonsterClick}
                     hoveredPath={hooksTurnLogic.hoveredPath}
                     hoveredPathVariant={hooksTurnLogic.hoveredPathVariant}
+                    movementReachableCells={movementReachableCells}
                     secretPassages={foundPassages}
                     treasures={hooksTreasure.getFoundTreasures()}
                     triggeredTraps={triggeredTraps}

@@ -682,8 +682,10 @@ export function useTurnLogic({
   }, [gameSession, turnPhase.HasPerformedAction, heroStatsLogic, visibilityCalc, visibilityMap, onNotify, sessionManager, canMeleeAcrossCells]);
 
   useEffect(() => {
+    if (!gameSession?.isHeroOrderConfirmed) return;
+
     const currentHero = gameSession?.heroes?.find(h => h.turnOrder === gameSession?.currentTurn);
-    const activeTurnKey = `${gameSession?.currentTurn}-${currentHero?.heroId}`;
+    const activeTurnKey = `${gameSession?.currentTurn}-${currentHero?.heroId ?? "none"}`;
 
     if (previousActiveTurnKey.current !== activeTurnKey) {
       pendingStairsExitConfirmedRef.current = false;
@@ -709,8 +711,27 @@ export function useTurnLogic({
   }, [
     gameSession?.currentTurn,
     gameSession?.heroes,
+    gameSession?.isHeroOrderConfirmed,
     mapInteractionLogic,
     applyMovementRoll,
+  ]);
+
+  const reachableMovementCells = useMemo(() => {
+    if (!gameSession?.isHeroOrderConfirmed) return [];
+    if (movementPoints == null || movementPoints <= 0 || isMoving) return [];
+    if (!activeHero || activeHero.currentBody <= 0 || activeHero.isEscaped) return [];
+    return hooksPathfinding.getReachableCells?.(
+      activeHero.x,
+      activeHero.y,
+      movementPoints,
+      activeHero.heroId
+    ) ?? [];
+  }, [
+    gameSession?.isHeroOrderConfirmed,
+    movementPoints,
+    isMoving,
+    activeHero,
+    hooksPathfinding,
   ]);
 
   useEffect(() => {
@@ -897,6 +918,7 @@ export function useTurnLogic({
   return {
     turnPhase,
     movementPoints,
+    reachableMovementCells,
     hoveredPath,
     hoveredPathVariant,
     isMoving,
